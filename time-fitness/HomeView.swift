@@ -4,7 +4,6 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppState.self) private var state
-    @State private var isMenuOpen: Bool = false
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -13,7 +12,7 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 HomeTopBar(onMenuTapped: {
                     withAnimation(.easeInOut(duration: 0.3)) {
-                        isMenuOpen.toggle()
+                        state.showGlobalMenu = true
                     }
                 })
                 .padding(.horizontal, 24)
@@ -22,17 +21,16 @@ struct HomeView: View {
                 ZStack {
                     if state.homeTab == .tree {
                         VStack(spacing: 0) {
-                            VStack(spacing: 18) {
+                            Spacer(minLength: 10)
+
+                            VStack(spacing: 28) {
                                 PlantNameRow()
                                 PlantRingCard()
-                                Text("總訓練組數：\(state.totalSetsCompleted) 組")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundStyle(.white.opacity(0.9))
+                                MotivationLabel()
                             }
                             .padding(.horizontal, 24)
-                            .padding(.top, 14)
 
-                            Spacer()
+                            Spacer(minLength: 20)
 
                             QuickStartSection()
                                 .padding(.horizontal, 20)
@@ -61,47 +59,23 @@ struct HomeView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.35), value: state.homeTab)
-
-            if isMenuOpen {
-                Color.black.opacity(0.35)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            isMenuOpen = false
-                        }
-                    }
-
-                SideMenuView(
-                    onSelectMyTree: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            state.screen = .home
-                            state.homeTab = .tree
-                            isMenuOpen = false
-                        }
-                    },
-                    onSelectAchievements: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            state.screen = .achievements
-                            isMenuOpen = false
-                        }
-                    },
-                    onSelectSettings: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            state.screen = .settings
-                            isMenuOpen = false
-                        }
-                    },
-                    onLogout: {
-                        // placeholder: just close for now
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            isMenuOpen = false
-                        }
-                    }
-                )
-                .transition(.move(edge: .leading).combined(with: .opacity))
-                .zIndex(1)
-            }
         }
+        .alert("請更換花盆", isPresented: Binding(
+            get: { state.showSwitchPotPrompt },
+            set: { state.showSwitchPotPrompt = $0 }
+        )) {
+            Button("前往花園") {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    state.homeTab = .garden
+                }
+            }
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(state.switchPotPromptMessage.isEmpty
+                 ? "當前盆栽已達 100%，請先選擇其他花盆。"
+                 : state.switchPotPromptMessage)
+        }
+
     }
 }
 
@@ -113,44 +87,33 @@ private struct HomeTopBar: View {
 
     var body: some View {
         HStack {
+            // 左：漢堡選單
             Button(action: onMenuTapped) {
                 Image(systemName: "line.3.horizontal")
                     .font(.title3.bold())
                     .foregroundStyle(.white)
             }
             .buttonStyle(.plain)
+            .frame(width: 44)
 
             Spacer()
 
+            // 中：小樹 / 花園 切換
             HStack(spacing: 0) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        state.homeTab = .tree
+                ForEach([HomeTab.tree, HomeTab.garden], id: \.self) { tab in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.35)) { state.homeTab = tab }
+                    } label: {
+                        Text(tab == .tree ? "小樹" : "花園")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.black.opacity(state.homeTab == tab ? 0.85 : 0.35))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 2)
                     }
-                } label: {
-                    Text("小樹")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.black.opacity(state.homeTab == .tree ? 0.85 : 0.35))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 2)
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        state.homeTab = .garden
-                    }
-                } label: {
-                    Text("花園")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.black.opacity(state.homeTab == .garden ? 0.85 : 0.35))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 2)
-                }
-                .buttonStyle(.plain)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
+            .padding(.vertical, 8).padding(.horizontal, 10)
             .frame(width: 160)
             .background(.white.opacity(0.9))
             .clipShape(Capsule())
@@ -158,14 +121,9 @@ private struct HomeTopBar: View {
 
             Spacer()
 
-            Circle()
-                .fill(Color.orange.opacity(0.9))
-                .frame(width: 40, height: 40)
-                .overlay(
-                    Image(systemName: "pawprint.fill")
-                        .foregroundStyle(.white)
-                        .font(.subheadline)
-                )
+            // 右側留白，維持置中平衡
+            Spacer()
+                .frame(width: 44)
         }
     }
 }
@@ -176,54 +134,18 @@ private struct PlantNameRow: View {
     @Environment(AppState.self) private var state
 
     var body: some View {
-        VStack(spacing: 10) {
-            // Top badges row
-            HStack {
-                statusBadge
-                Spacer()
-                hydrationBadge
-            }
-            
-            // Plant name centered
+        VStack(spacing: 6) {
             Text(state.currentPlant.name)
-                .font(.system(size: 40, weight: .black))
+                .font(.system(size: 38, weight: .black))
                 .foregroundStyle(.white.opacity(0.96))
-                .shadow(color: .black.opacity(0.2), radius: 2, y: 2)
-                .frame(maxWidth: .infinity)
-            
-            // Quote centered under the name
+                .shadow(color: .black.opacity(0.18), radius: 2, y: 2)
+
             Text("「\(state.currentPlant.quote)」")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.85))
-                .frame(maxWidth: .infinity)
+                .foregroundStyle(.white.opacity(0.75))
                 .multilineTextAlignment(.center)
         }
-    }
-
-    private var statusBadge: some View {
-        VStack(spacing: 5) {
-            Image(systemName: state.hasWorkoutToday
-                  ? "checkmark.circle.fill"
-                  : "exclamationmark.triangle.fill")
-                .font(.title3)
-                .foregroundStyle(state.hasWorkoutToday ? Color.green : Color.yellow)
-            Text(state.hasWorkoutToday ? "今日已練" : "待運動")
-                .font(.caption2.bold())
-                .foregroundStyle(.white.opacity(0.9))
-        }
-        .frame(width: 60)
-    }
-
-    private var hydrationBadge: some View {
-        VStack(spacing: 5) {
-            Image(systemName: "drop.fill")
-                .font(.title3)
-                .foregroundStyle(.cyan)
-            Text("\(Int(state.plantHydration))%")
-                .font(.caption2.bold())
-                .foregroundStyle(.white.opacity(0.9))
-        }
-        .frame(width: 60)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -266,18 +188,25 @@ struct PlantRingCard: View {
     }
 
     private var ringContent: some View {
-        VStack(spacing: 4) {
-            Text("\(Int(state.plantHydration))%")
-                .font(.system(size: 32, weight: .black))
-                .foregroundStyle(.black)
+        VStack(spacing: 0) {
+            // 上方：百分比 + 進度
+            VStack(spacing: 3) {
+                Text("\(Int(state.plantHydration))%")
+                    .font(.system(size: 26, weight: .black))
+                    .foregroundStyle(.black)
+                Text("\(state.hydrationLevel)/\(state.currentPlant.unlockTarget)")
+                    .font(.caption.bold())
+                    .foregroundStyle(.gray)
+            }
+            .padding(.top, 18)
 
-            Text("\(state.hydrationLevel)/\(state.currentPlant.unlockTarget)")
-                .font(.title3.bold())
-                .foregroundStyle(.gray)
+            // 中間彈性空間
+            Spacer()
 
+            // 花盆置中於剩餘空間
             ZStack(alignment: .top) {
                 DrawableImage(path: state.currentPlant.imagePath, fallbackColor: state.plantColor)
-                    .frame(width: 118, height: 118)
+                    .frame(width: 100, height: 100)
                     .scaleEffect(state.plantScale)
                     .animation(.spring(duration: 0.5, bounce: 0.4), value: state.plantScale)
 
@@ -296,7 +225,137 @@ struct PlantRingCard: View {
                     ))
                 }
             }
-            .padding(.top, 2)
+
+            // 下方彈性空間（讓花盆不貼底）
+            Spacer()
+                .frame(minHeight: 14)
+        }
+        .frame(width: 180, height: 210)
+    }
+}
+
+// MARK: - MotivationLabel
+
+private struct MotivationLabel: View {
+    @Environment(AppState.self) private var state
+    @State private var quoteIndex: Int = 0
+    @State private var visible: Bool = true
+    @State private var activeQuotes: [String] = []
+
+    private let cycleTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
+
+    private static let pool: [(range: ClosedRange<Double>, quotes: [String])] = [
+        (0...14, [
+            "每一次訓練，都是對自己的承諾",
+            "開始永遠不嫌晚，今天就是最好的時機",
+            "改變從第一步開始",
+            "身體記得你每一次的付出"
+        ]),
+        (15...29, [
+            "小小的積累，終將成為巨大的改變",
+            "堅持不是天賦，而是選擇",
+            "你今天的努力，是明天的基礎",
+            "過程比結果更值得驕傲"
+        ]),
+        (30...49, [
+            "你已經走了三分之一，別讓自己後悔",
+            "節奏對了，剩下的就交給時間",
+            "不需要完美，只需要繼續",
+            "每次訓練都在重塑更好的你"
+        ]),
+        (50...69, [
+            "超過一半了，你比想像中更有毅力",
+            "持續的力量遠勝過短暫的爆發",
+            "你已經證明了自己能做到",
+            "中途是最難的地方，你已經過了"
+        ]),
+        (70...84, [
+            "終點就在前方，不要停下來",
+            "這段路不容易，但你一直在走",
+            "快到了，讓身體感受到那個瞬間",
+            "每一滴汗都值得"
+        ]),
+        (85...99, [
+            "差一點就完成了，再堅持一下",
+            "你能感受到植物在等待你",
+            "最後的衝刺，往往決定整段旅程",
+            "就快了，不要放棄在這裡"
+        ]),
+        (100...100, [
+            "完全解鎖，你做到了",
+            "從種子到大樹，見證了你的堅持",
+            "這段旅程值得記住",
+            "你的努力，植物都感受到了"
+        ])
+    ]
+
+    private func quotes(for hydration: Double) -> [String] {
+        let pct = hydration
+        return Self.pool.first(where: { $0.range.contains(pct) })?.quotes
+            ?? Self.pool.last!.quotes
+    }
+
+    var body: some View {
+        Group {
+            if visible {
+                Text(displayQuote)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .padding(.horizontal, 24)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.35), value: visible)
+        .onAppear {
+            syncQuotesWithHydration(resetIndex: true)
+        }
+        .onChange(of: state.plantHydration, initial: false) { _, _ in
+            syncQuotesWithHydration(resetIndex: false)
+        }
+        .onReceive(cycleTimer) { _ in
+            rotateQuote()
+        }
+    }
+
+    private var displayQuote: String {
+        if activeQuotes.isEmpty {
+            return quotes(for: state.plantHydration).first ?? ""
+        }
+        return activeQuotes[quoteIndex % activeQuotes.count]
+    }
+
+    private func syncQuotesWithHydration(resetIndex: Bool) {
+        let nextQuotes = quotes(for: state.plantHydration)
+        let changedPool = nextQuotes != activeQuotes
+        guard changedPool || activeQuotes.isEmpty || resetIndex else { return }
+
+        activeQuotes = nextQuotes
+        guard !activeQuotes.isEmpty else {
+            quoteIndex = 0
+            return
+        }
+
+        if resetIndex {
+            // 以當前秒數為初始 index，避免每次都從同一句開始
+            quoteIndex = Int(Date().timeIntervalSince1970) % activeQuotes.count
+        } else {
+            quoteIndex = quoteIndex % activeQuotes.count
+        }
+
+        visible = true
+    }
+
+    private func rotateQuote() {
+        guard visible else { return }
+        guard activeQuotes.count > 1 else { return }
+
+        withAnimation(.easeInOut(duration: 0.35)) { visible = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40) {
+            quoteIndex = (quoteIndex + 1) % activeQuotes.count
+            withAnimation(.easeInOut(duration: 0.35)) { visible = true }
         }
     }
 }
@@ -308,29 +367,90 @@ private struct QuickStartSection: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            if let last = state.quickStartExercise {
-                quickStartCard(for: last)
+            // 若有菜單正在執行，顯示菜單當前動作卡
+            if let planItem = state.activePlanItem,
+               let ex = state.exercises.first(where: { $0.id == planItem.exerciseID }) {
+                planItemCard(item: planItem, exercise: ex)
+            } else {
+                // 今日狀態摘要卡
+                todayStatsCard
             }
-            changeMoveButton
+
+            // 底部雙按鈕：選擇動作 / 選擇菜單（各一半）
+            HStack(spacing: 10) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        state.screen = .dictionary
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("選擇動作")
+                            .font(.headline.bold())
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.subheadline)
+                    }
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 15)
+                    .background(.white.opacity(0.18))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        state.screen = .workoutPlan
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        DrawableImage(path: "drawable/task", fallbackColor: .white.opacity(0.7))
+                            .frame(width: 16, height: 16)
+                        Text("選擇菜單")
+                            .font(.headline.bold())
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.subheadline)
+                    }
+                    .foregroundStyle(.white.opacity(0.9))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 15)
+                    .background(.white.opacity(0.18))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .onAppear {
+            state.refreshHealthKitTodayStatsIfNeeded(force: true)
         }
     }
 
-    private func quickStartCard(for exercise: Exercise) -> some View {
+    // 菜單執行中的卡片
+    private func planItemCard(item: WorkoutPlanItem, exercise: Exercise) -> some View {
         Button { state.startExercise(exercise) } label: {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("繼續上次")
-                        .font(.caption.bold())
-                        .foregroundStyle(.white.opacity(0.65))
+                    HStack(spacing: 5) {
+                        DrawableImage(path: "drawable/task", fallbackColor: .white.opacity(0.7))
+                            .frame(width: 13, height: 13)
+                        Text("菜單第 \(state.activePlanIndex + 1) 個")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
                     Text(exercise.name)
                         .font(.title2.bold())
                         .foregroundStyle(.white)
-                    Text("\(exercise.defaultSets) 組 · \(Int(state.lastWeight)) kg · 上次 \(state.lastReps) 下")
+                    Text("\(item.sets) 組 · \(Int(item.targetWeightKg)) kg · 目標 \(item.targetReps) 下")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.75))
                 }
                 Spacer()
-                Text("Start")
+                Text("開始")
                     .font(.title3.bold())
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20).padding(.vertical, 12)
@@ -338,117 +458,117 @@ private struct QuickStartSection: View {
                     .clipShape(Capsule())
             }
             .padding(18)
-            .background(Color(red: 0.30, green: 0.56, blue: 0.50))
+            .background(Color(red: 0.25, green: 0.50, blue: 0.60))
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
     }
 
-    private var changeMoveButton: some View {
-        Button { state.screen = .dictionary } label: {
-            HStack {
-                Image(systemName: "plus.circle.fill").font(.title3)
-                Text("換個動作").font(.headline.bold())
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline)
-            }
-            .foregroundStyle(.white.opacity(0.88))
-            .padding(16)
-            .background(.white.opacity(0.18))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
-    }
-}
+    // 今日狀態摘要卡
+    private var todayStatsCard: some View {
+        let calorieBarProgress = min(max(state.todayCalories / 900.0, 0.08), 1.0)
 
-// MARK: - SideMenuView
+        return HStack(spacing: 12) {
+            // 左側：消耗主資訊
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.orange.opacity(0.95))
+                    Text("今日消耗")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.86))
+                }
 
-private struct SideMenuView: View {
-    let onSelectMyTree: () -> Void
-    let onSelectAchievements: () -> Void
-    let onSelectSettings: () -> Void
-    let onLogout: () -> Void
+                Spacer(minLength: 8)
 
-    var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 32, height: 32)
-                            .overlay(
-                                Image(systemName: "pawprint.fill")
-                                    .foregroundStyle(Color(red: 0.95, green: 0.45, blue: 0.35))
-                                    .font(.system(size: 16, weight: .bold))
+                Text("\(Int(state.todayCalories)) kcal")
+                    .font(.system(size: 21, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.7)
+                    .contentTransition(.numericText())
+
+                Spacer(minLength: 10)
+
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(.white.opacity(0.16))
+                            .frame(height: 10)
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.orange.opacity(0.7), .yellow, .orange.opacity(0.7)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                        Text("Hi Steven")
-                            .font(.headline.bold())
-                            .foregroundColor(.white)
+                            .frame(width: max(24, proxy.size.width * calorieBarProgress), height: 10)
                     }
-                    Divider()
-                        .overlay(Color.white.opacity(0.4))
                 }
-                .padding(.top, 32)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-
-                VStack(alignment: .leading, spacing: 20) {
-                    menuRow(icon: "tree.fill", title: "我的小樹", action: onSelectMyTree)
-                    menuRow(icon: "trophy.fill", title: "成就達成", action: onSelectAchievements)
-                    menuRow(icon: "gearshape.fill", title: "設定", action: onSelectSettings)
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 8)
-
-                Spacer()
-
-                Button(action: onLogout) {
-                    HStack {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("登出")
-                    }
-                    .font(.headline.bold())
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color(red: 0.36, green: 0.55, blue: 0.50).opacity(0.9))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
+                .frame(height: 10)
+                .animation(.easeInOut(duration: 0.8), value: state.todayCalories)
             }
-            .frame(minWidth: 260, maxWidth: 260)
-            .frame(maxHeight: .infinity, alignment: .top)
-            .background(
-                Color(red: 0.44, green: 0.62, blue: 0.58)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    )
-            )
-            .shadow(color: .black.opacity(0.25), radius: 10, x: 4, y: 0)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(height: 134)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.white.opacity(0.07))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            Spacer()
+            // 右側雙列統計（更俐落）
+            VStack(spacing: 10) {
+                statRowTile(
+                    icon: "figure.walk",
+                    iconColor: Color(red: 0.86, green: 0.89, blue: 0.41),
+                    value: "\(state.todayStepCount)",
+                    label: "今日步數"
+                )
+                statRowTile(
+                    icon: "figure.run",
+                    iconColor: .orange.opacity(0.9),
+                    value: "\(state.todayActivityCount)",
+                    label: "今日運動次數"
+                )
+            }
+            .frame(width: 154)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.white.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(.white.opacity(0.06), lineWidth: 1)
+        )
     }
 
-    private func menuRow(icon: String, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                Image(systemName: icon)
-                    .font(.system(size: 18))
-                Text(title)
-                    .font(.system(size: 16, weight: .medium))
-                Spacer()
+    private func statRowTile(icon: String, iconColor: Color, value: String, label: String) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(iconColor)
+                    Text(label)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+
+                Text(value)
+                    .font(.system(size: 24, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.65)
+                    .lineLimit(1)
             }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(height: 62)
+        .background(.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

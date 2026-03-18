@@ -47,6 +47,63 @@ extension UIImage {
         }
         return nil
     }
+
+    private static let trimmedCache = NSCache<NSString, UIImage>()
+
+    /// Load image and trim transparent padding to normalize visual size.
+    static func drawableNormalized(named rawPath: String) -> UIImage? {
+        let key = rawPath as NSString
+        if let cached = trimmedCache.object(forKey: key) { return cached }
+        guard let image = drawable(named: rawPath) else { return nil }
+        let normalized = image.trimTransparentPadding() ?? image
+        trimmedCache.setObject(normalized, forKey: key)
+        return normalized
+    }
+
+    /// Crop fully transparent outer pixels.
+    private func trimTransparentPadding() -> UIImage? {
+        guard let cg = self.cgImage else { return nil }
+        let alphaInfo = cg.alphaInfo
+        let alphaOffset: Int
+        switch alphaInfo {
+        case .premultipliedLast, .last, .noneSkipLast:
+            alphaOffset = 3
+        case .premultipliedFirst, .first, .noneSkipFirst:
+            alphaOffset = 0
+        default:
+            return nil
+        }
+
+        guard let provider = cg.dataProvider,
+              let cfData = provider.data,
+              let ptr = CFDataGetBytePtr(cfData) else { return nil }
+
+        let width = cg.width
+        let height = cg.height
+        let bpp = max(cg.bitsPerPixel / 8, 4)
+        let bpr = cg.bytesPerRow
+
+        var minX = width, minY = height, maxX = 0, maxY = 0
+        var found = false
+
+        for y in 0..<height {
+            for x in 0..<width {
+                let index = y * bpr + x * bpp + alphaOffset
+                if ptr[index] > 0 {
+                    found = true
+                    if x < minX { minX = x }
+                    if y < minY { minY = y }
+                    if x > maxX { maxX = x }
+                    if y > maxY { maxY = y }
+                }
+            }
+        }
+
+        guard found else { return nil }
+        let cropRect = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+        guard let cropped = cg.cropping(to: cropRect) else { return nil }
+        return UIImage(cgImage: cropped, scale: scale, orientation: imageOrientation)
+    }
 }
 
 // MARK: - DrawableImage view
@@ -57,7 +114,7 @@ struct DrawableImage: View {
     let fallbackColor: Color
 
     var body: some View {
-        if let image = UIImage.drawable(named: path) {
+        if let image = UIImage.drawableNormalized(named: path) {
             Image(uiImage: image).resizable().scaledToFit()
         } else {
             Image(systemName: "leaf.fill")

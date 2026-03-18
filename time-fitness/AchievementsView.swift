@@ -12,7 +12,7 @@ struct AchievementsView: View {
                 HStack {
                     Button {
                         withAnimation(.easeInOut(duration: 0.3)) {
-                            state.screen = .home
+                            state.showGlobalMenu = true
                         }
                     } label: {
                         Image(systemName: "line.3.horizontal")

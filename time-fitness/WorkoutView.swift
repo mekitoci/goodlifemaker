@@ -69,7 +69,12 @@ private struct TrainingView: View {
 
     private var navBar: some View {
         HStack {
-            Button { state.screen = .home; state.resetSession() } label: {
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    state.screen = .home
+                    state.resetSession()
+                }
+            } label: {
                 Image(systemName: "xmark")
                     .font(.headline.bold())
                     .foregroundStyle(.white)
@@ -441,6 +446,7 @@ private struct RestView: View {
 
 private struct SummaryView: View {
     @Environment(AppState.self) private var state
+    @Environment(\.modelContext) private var modelContext
     private let sidePadding: CGFloat = 20
     private let cardRadius: CGFloat = 18
     @State private var animateDrops: Bool = false
@@ -606,19 +612,54 @@ private struct SummaryView: View {
     }
 
     private var finishButton: some View {
-        Button { state.finishAndGoHome() } label: {
-            HStack(spacing: 8) {
-                Text("灌溉植物，回到花園")
-                    .font(.title3.bold())
+        VStack(spacing: 10) {
+            // 若菜單還有下一個動作
+            if state.hasNextPlanItem,
+               let next = state.activePlanQueue[safe: state.activePlanIndex + 1] {
+                Button {
+                    state.finishAndGoHome(modelContext: modelContext)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        state.advanceToNextPlanItem()
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.right.circle.fill")
+                        Text("繼續：\(next.exerciseName)")
+                            .font(.title3.bold())
+                    }
                     .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(Color(red: 0.25, green: 0.50, blue: 0.60))
+                    .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+                    .shadow(color: .black.opacity(0.18), radius: 10, y: 6)
+                }
+                .buttonStyle(.plain)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 18)
-            .background(Color(red: 0.28, green: 0.55, blue: 0.48))
-            .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.18), radius: 10, y: 6)
+
+            Button {
+                state.clearActivePlan()
+                state.finishAndGoHome(modelContext: modelContext)
+            } label: {
+                Text(state.hasNextPlanItem ? "完成菜單，回到花園" : "灌溉植物，回到花園")
+                    .font(state.hasNextPlanItem ? .subheadline.bold() : .title3.bold())
+                    .foregroundStyle(state.hasNextPlanItem ? .white.opacity(0.7) : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, state.hasNextPlanItem ? 12 : 18)
+                    .background(Color(red: 0.28, green: 0.55, blue: 0.48)
+                        .opacity(state.hasNextPlanItem ? 0.6 : 1.0))
+                    .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+                    .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Safe subscript
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }
 

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import Charts
+import UIKit
 
 struct ContentView: View {
     @State private var state = AppState()
@@ -57,11 +58,6 @@ struct ContentView: View {
                                 state.screen = .settings
                                 state.showGlobalMenu = false
                             }
-                        },
-                        onLogout: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                state.showGlobalMenu = false
-                            }
                         }
                     )
                     .transition(.move(edge: .leading).combined(with: .opacity))
@@ -84,22 +80,16 @@ private struct AppSideMenuView: View {
     let onSelectWorkoutHistory: () -> Void
     let onSelectAchievements: () -> Void
     let onSelectSettings: () -> Void
-    let onLogout: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.white)
+                        DrawableImage(path: "potly-icon", fallbackColor: .white)
                             .frame(width: 32, height: 32)
-                            .overlay(
-                                Image(systemName: "pawprint.fill")
-                                    .foregroundStyle(Color(red: 0.95, green: 0.45, blue: 0.35))
-                                    .font(.system(size: 16, weight: .bold))
-                            )
-                        Text("Hi Steven")
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        Text("Potly - 組間休息計時")
                             .font(.headline.bold())
                             .foregroundColor(.white)
                     }
@@ -120,22 +110,6 @@ private struct AppSideMenuView: View {
                 .padding(.top, 8)
 
                 Spacer()
-
-                Button(action: onLogout) {
-                    HStack {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("登出")
-                    }
-                    .font(.headline.bold())
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color(red: 0.36, green: 0.55, blue: 0.50).opacity(0.9))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 20)
             }
             .frame(minWidth: 260, maxWidth: 260)
             .frame(maxHeight: .infinity, alignment: .top)
@@ -550,7 +524,7 @@ struct SettingsView: View {
                             SettingsInfoRow(
                                 icon: "info.circle.fill",
                                 title: "版本",
-                                subtitle: "time-fitness",
+                                subtitle: "Potly",
                                 textPrimary: textPrimary,
                                 textSecondary: textSecondary
                             ) {
@@ -692,22 +666,35 @@ private let whCardColor   = Color(red: 0.31, green: 0.56, blue: 0.52)
 private let whAccentColor = Color(red: 0.86, green: 0.89, blue: 0.41)
 private let whAccentGreen = Color(red: 0.18, green: 0.62, blue: 0.43)
 
+@MainActor
 struct WorkoutHistoryView: View {
     @Environment(AppState.self) private var state
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @State private var selectedMuscle: String = "全部"
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: .now)
     @State private var showingDeleteAlert = false
     @State private var pendingDelete: WorkoutSession?
-    @State private var chartMode: ChartMode = .week
+    @State private var selectedSessionForDetail: WorkoutSession?
+    @State private var showShareSheet = false
+    @State private var shareImage: UIImage?
     @Environment(\.modelContext) private var modelContext
-
-    enum ChartMode { case week, month }
 
     private var muscleGroups: [String] {
         ["全部"] + Array(Set(sessions.map(\.muscleGroup))).sorted()
     }
-    private var filtered: [WorkoutSession] {
+    private var filteredByMuscle: [WorkoutSession] {
         selectedMuscle == "全部" ? sessions : sessions.filter { $0.muscleGroup == selectedMuscle }
+    }
+
+    private var recordsForSelectedDate: [WorkoutSession] {
+        let cal = Calendar.current
+        return filteredByMuscle.filter { cal.isDate($0.date, inSameDayAs: selectedDate) }
+    }
+
+    private var selectedDateText: String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M 月 d 日"
+        return fmt.string(from: selectedDate)
     }
 
     var body: some View {
@@ -733,6 +720,17 @@ struct WorkoutHistoryView: View {
             Button("刪除", role: .destructive) { modelContext.delete(s); try? modelContext.save() }
             Button("取消", role: .cancel) {}
         } message: { s in Text("確定刪除「\(s.exerciseName)」的訓練紀錄？") }
+        .sheet(item: $selectedSessionForDetail) { session in
+            ExerciseHistoryDetailView(
+                exerciseName: session.exerciseName,
+                sessions: sessions.filter { $0.exerciseName == session.exerciseName }
+            )
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let shareImage {
+                ActivityShareSheet(activityItems: [shareImage])
+            }
+        }
     }
 
     // MARK: Nav Bar
@@ -744,7 +742,7 @@ struct WorkoutHistoryView: View {
             Spacer()
             Text("運動紀錄").font(.headline.bold()).foregroundStyle(.white)
             Spacer()
-            Text("\(filtered.count) 筆").font(.subheadline).foregroundStyle(.white.opacity(0.7))
+            Text("\(recordsForSelectedDate.count) 筆").font(.subheadline).foregroundStyle(.white.opacity(0.7))
         }
     }
 
@@ -762,53 +760,22 @@ struct WorkoutHistoryView: View {
     // MARK: Chart Card (含切換)
     private var histChartCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Toggle
             HStack {
-                Text("你的紀錄")
+                Text("近 30 天訓練熱力圖")
                     .font(.subheadline.bold())
                     .foregroundStyle(.white.opacity(0.9))
                 Spacer()
-                HStack(spacing: 0) {
-                    ForEach([("7天", ChartMode.week), ("30天", ChartMode.month)], id: \.0) { label, mode in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.22)) { chartMode = mode }
-                        } label: {
-                            Text(label)
-                                .font(.caption.bold())
-                                .foregroundStyle(chartMode == mode ? whCardColor : .white.opacity(0.7))
-                                .padding(.horizontal, 12).padding(.vertical, 5)
-                                .background(chartMode == mode ? whAccentColor : Color.clear)
-                                .clipShape(Capsule())
-                        }.buttonStyle(.plain)
-                    }
-                }
-                .padding(3)
-                .background(Color.white.opacity(0.15))
-                .clipShape(Capsule())
             }
 
-            if chartMode == .week {
-                histBarChart
-            } else {
-                histHeatmap
-            }
+            histHeatmap
+
+            Text("目前顯示：\(selectedDateText)")
+                .font(.caption.bold())
+                .foregroundStyle(.white.opacity(0.82))
         }
         .padding(16)
         .background(whCardColor)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    // MARK: 7-day Bar Chart
-    private var histBarChart: some View {
-        let data = histWeeklyData()
-        return Chart(data, id: \.label) { item in
-            BarMark(x: .value("日期", item.label), y: .value("次數", item.count))
-                .foregroundStyle(item.count > 0 ? whAccentColor : whAccentColor.opacity(0.2))
-                .cornerRadius(6)
-        }
-        .chartYAxis { AxisMarks(position: .leading) { _ in AxisValueLabel().foregroundStyle(Color.white.opacity(0.6)) } }
-        .chartXAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(Color.white.opacity(0.6)) } }
-        .frame(height: 120)
     }
 
     // MARK: 30-day Heatmap
@@ -839,10 +806,22 @@ struct WorkoutHistoryView: View {
                         .fill(heatColor(count: item.count))
                         .frame(height: 28)
                         .overlay(
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .stroke(
+                                    Calendar.current.isDate(item.date, inSameDayAs: selectedDate)
+                                    ? Color.white.opacity(0.95)
+                                    : Color.clear,
+                                    lineWidth: 2
+                                )
+                        )
+                        .overlay(
                             item.count > 0
                             ? Text("\(item.count)").font(.system(size: 9, weight: .bold)).foregroundStyle(.white)
                             : nil
                         )
+                        .onTapGesture {
+                            selectedDate = Calendar.current.startOfDay(for: item.date)
+                        }
                 }
             }
 
@@ -879,36 +858,63 @@ struct WorkoutHistoryView: View {
 
     // MARK: Session List
     private var histSessionList: some View {
-        LazyVStack(spacing: 10) {
-            ForEach(filtered) { session in
-                HistSessionCard(session: session) {
-                    pendingDelete = session; showingDeleteAlert = true
+        VStack(spacing: 12) {
+            if recordsForSelectedDate.isEmpty {
+                VStack(spacing: 6) {
+                    Text("當天沒有訓練紀錄")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.72))
+                    Text("點上方趨勢圖可切換其他日期")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.58))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 22)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            } else {
+                LazyVStack(spacing: 10) {
+                    ForEach(recordsForSelectedDate) { session in
+                        HistSessionCard(session: session) {
+                            pendingDelete = session; showingDeleteAlert = true
+                        } onOpenDetail: {
+                            selectedSessionForDetail = session
+                        }
+                    }
                 }
             }
+
+            Button {
+                guard let image = generateShareImage() else { return }
+                shareImage = image
+                showShareSheet = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("分享圖片")
+                }
+                .font(.subheadline.bold())
+                .foregroundStyle(whCardColor)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(whAccentColor)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(sessions.isEmpty)
+            .opacity(sessions.isEmpty ? 0.5 : 1.0)
         }
     }
 
     // MARK: Data helpers
-    private struct WeekDayData { let label: String; let count: Int }
     private struct DayData { let date: Date; let count: Int }
-
-    private func histWeeklyData() -> [WeekDayData] {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: .now)
-        let fmt = DateFormatter(); fmt.dateFormat = "E"
-        return (0..<7).reversed().map { offset in
-            let day = cal.date(byAdding: .day, value: -offset, to: today)!
-            return WeekDayData(label: fmt.string(from: day),
-                               count: sessions.filter { cal.isDate($0.date, inSameDayAs: day) }.count)
-        }
-    }
 
     private func histMonthData() -> [DayData] {
         let cal = Calendar.current
         let today = cal.startOfDay(for: .now)
         return (0..<30).reversed().map { offset in
             let day = cal.date(byAdding: .day, value: -offset, to: today)!
-            return DayData(date: day, count: sessions.filter { cal.isDate($0.date, inSameDayAs: day) }.count)
+            return DayData(date: day, count: filteredByMuscle.filter { cal.isDate($0.date, inSameDayAs: day) }.count)
         }
     }
 
@@ -921,11 +927,184 @@ struct WorkoutHistoryView: View {
         default:   return whAccentColor
         }
     }
+
+    @MainActor
+    private func generateShareImage() -> UIImage? {
+        let data = shareMonthData()
+        let renderer = ImageRenderer(
+            content: WorkoutHeatmapShareCard(
+                days: data,
+                todayCalories: state.todayCalories,
+                todayWorkoutCount: data.last?.count ?? 0
+            )
+            .frame(width: 720)
+        )
+        renderer.scale = 2
+        return renderer.uiImage
+    }
+
+    private func shareMonthData() -> [ShareHeatDay] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        return (0..<30).reversed().map { offset in
+            let day = cal.date(byAdding: .day, value: -offset, to: today)!
+            let count = sessions.filter { cal.isDate($0.date, inSameDayAs: day) }.count
+            return ShareHeatDay(date: day, count: count)
+        }
+    }
+}
+
+private struct ShareHeatDay {
+    let date: Date
+    let count: Int
+}
+
+private struct WorkoutHeatmapShareCard: View {
+    let days: [ShareHeatDay]
+    let todayCalories: Double
+    let todayWorkoutCount: Int
+
+    private let cols = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+    private let weekdayLabels = ["日", "一", "二", "三", "四", "五", "六"]
+
+    private var startWeekdayOffset: Int {
+        let cal = Calendar.current
+        return max(0, cal.component(.weekday, from: days.first?.date ?? .now) - 1)
+    }
+
+    private var dateRangeText: String {
+        guard let first = days.first?.date, let last = days.last?.date else { return "" }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M/d"
+        return "\(fmt.string(from: first)) - \(fmt.string(from: last))"
+    }
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.33, green: 0.56, blue: 0.53),
+                    Color(red: 0.27, green: 0.48, blue: 0.47)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Potly 今日分享")
+                            .font(.system(size: 34, weight: .black))
+                            .foregroundStyle(.white)
+                        Text(dateRangeText)
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.white.opacity(0.78))
+                    }
+                    Spacer()
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(Color(red: 1.0, green: 0.80, blue: 0.28))
+                }
+
+                HStack(spacing: 10) {
+                    shareStatPill("今日消耗量", "\(Int(todayCalories)) kcal")
+                    shareStatPill("今日訓練次數", "\(todayWorkoutCount)")
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("近 30 天訓練熱力圖")
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
+
+                    LazyVGrid(columns: cols, spacing: 6) {
+                        ForEach(weekdayLabels, id: \.self) { label in
+                            Text(label)
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.55))
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+
+                    LazyVGrid(columns: cols, spacing: 6) {
+                        ForEach(0..<startWeekdayOffset, id: \.self) { _ in
+                            Color.clear.frame(height: 26)
+                        }
+                        ForEach(Array(days.enumerated()), id: \.offset) { _, item in
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(shareHeatColor(item.count))
+                                .frame(height: 26)
+                                .overlay(
+                                    item.count > 0
+                                    ? Text("\(item.count)")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(.white)
+                                    : nil
+                                )
+                        }
+                    }
+                }
+                .padding(14)
+                .background(Color.white.opacity(0.10))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                HStack {
+                    Text("用運動，養成更好的自己")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.85))
+                    Spacer()
+                    Text("#potly")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+            }
+            .padding(24)
+        }
+        .frame(height: 980)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private func shareStatPill(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.65))
+            Text(value)
+                .font(.headline.bold())
+                .foregroundStyle(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func shareHeatColor(_ count: Int) -> Color {
+        switch count {
+        case 0:    return Color.white.opacity(0.08)
+        case 1:    return Color(red: 0.77, green: 0.86, blue: 0.46).opacity(0.45)
+        case 2:    return Color(red: 0.77, green: 0.86, blue: 0.46).opacity(0.70)
+        case 3:    return Color(red: 0.77, green: 0.86, blue: 0.46).opacity(0.88)
+        default:   return Color(red: 0.77, green: 0.86, blue: 0.46)
+        }
+    }
+}
+
+private struct ActivityShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private struct HistSessionCard: View {
     let session: WorkoutSession
     let onDelete: () -> Void
+    let onOpenDetail: () -> Void
     @State private var expanded = false
 
     private var dateText: String {
@@ -934,29 +1113,42 @@ private struct HistSessionCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button { withAnimation(.easeInOut(duration: 0.25)) { expanded.toggle() } } label: {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle().fill(whAccentGreen).frame(width: 42, height: 42)
-                        Image(systemName: "dumbbell.fill").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(session.exerciseName).font(.headline.bold()).foregroundStyle(.white)
-                        HStack(spacing: 6) {
-                            Text(session.muscleGroup).font(.caption.bold()).foregroundStyle(whAccentColor)
-                                .padding(.horizontal, 7).padding(.vertical, 2)
-                                .background(whAccentColor.opacity(0.18)).clipShape(Capsule())
-                            Text(dateText).font(.caption).foregroundStyle(.white.opacity(0.6))
+            HStack(spacing: 10) {
+                Button(action: onOpenDetail) {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle().fill(whAccentGreen).frame(width: 42, height: 42)
+                            Image(systemName: "dumbbell.fill").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(session.exerciseName).font(.headline.bold()).foregroundStyle(.white)
+                            HStack(spacing: 6) {
+                                Text(session.muscleGroup).font(.caption.bold()).foregroundStyle(whAccentColor)
+                                    .padding(.horizontal, 7).padding(.vertical, 2)
+                                    .background(whAccentColor.opacity(0.18)).clipShape(Capsule())
+                                Text(dateText).font(.caption).foregroundStyle(.white.opacity(0.6))
+                            }
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("\(session.totalSets) 組").font(.subheadline.bold()).foregroundStyle(.white)
+                            Text(String(format: "%.0f kg", session.maxWeight)).font(.caption).foregroundStyle(.white.opacity(0.65))
                         }
                     }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(session.totalSets) 組").font(.subheadline.bold()).foregroundStyle(.white)
-                        Text(String(format: "%.0f kg", session.maxWeight)).font(.caption).foregroundStyle(.white.opacity(0.65))
-                    }
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.caption.bold()).foregroundStyle(.white.opacity(0.5))
-                }.padding(14)
-            }.buttonStyle(.plain)
+                    .padding(14)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) { expanded.toggle() }
+                } label: {
+                    Image(systemName: expanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .padding(.trailing, 12)
+                }
+                .buttonStyle(.plain)
+            }
 
             if expanded {
                 Divider().overlay(Color.white.opacity(0.15))
@@ -1005,6 +1197,264 @@ private struct HistSessionCard: View {
             Text(value).font(.subheadline.bold()).foregroundStyle(.white)
             Text(label).font(.caption2).foregroundStyle(.white.opacity(0.55))
         }.frame(maxWidth: .infinity)
+    }
+}
+
+private struct ExerciseHistoryDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let exerciseName: String
+    let sessions: [WorkoutSession]
+
+    private struct TrendPoint: Identifiable {
+        let id: UUID
+        let date: Date
+        let maxWeight: Double
+        let volume: Double
+        let setCount: Int
+    }
+
+    private var orderedSessions: [WorkoutSession] {
+        sessions.sorted { $0.date < $1.date }
+    }
+
+    private var trend: [TrendPoint] {
+        orderedSessions.map {
+            TrendPoint(
+                id: $0.id,
+                date: $0.date,
+                maxWeight: $0.maxWeight,
+                volume: $0.totalVolume,
+                setCount: $0.sets.count
+            )
+        }
+    }
+
+    private var bestWeight: Double {
+        trend.map(\.maxWeight).max() ?? 0
+    }
+
+    private var averageMaxWeight: Double {
+        guard !trend.isEmpty else { return 0 }
+        return trend.reduce(0) { $0 + $1.maxWeight } / Double(trend.count)
+    }
+
+    private var totalVolume: Double {
+        trend.reduce(0) { $0 + $1.volume }
+    }
+
+    private var averageReps: Double {
+        let allSets = orderedSessions.flatMap(\.sets)
+        guard !allSets.isEmpty else { return 0 }
+        let totalReps = allSets.reduce(0) { $0 + $1.reps }
+        return Double(totalReps) / Double(allSets.count)
+    }
+
+    private var latestDateText: String {
+        guard let latest = orderedSessions.last else { return "--" }
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M/d HH:mm"
+        return fmt.string(from: latest.date)
+    }
+
+    private var yDomain: ClosedRange<Double> {
+        guard let minValue = trend.map(\.maxWeight).min(),
+              let maxValue = trend.map(\.maxWeight).max() else {
+            return 0...100
+        }
+        if minValue == maxValue {
+            let padding = max(5, maxValue * 0.15)
+            return max(0, minValue - padding)...(maxValue + padding)
+        }
+        let padding = max(2, (maxValue - minValue) * 0.2)
+        return max(0, minValue - padding)...(maxValue + padding)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                whBgColor.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        statGrid
+                        weightTrendCard
+                        recentRecordsCard
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle(exerciseName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("關閉") { dismiss() }
+                        .foregroundStyle(.white)
+                }
+            }
+            .toolbarBackground(whBgColor, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+        }
+    }
+
+    private var statGrid: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                detailStatCard(title: "最佳重量", value: String(format: "%.1f kg", bestWeight))
+                detailStatCard(title: "平均重量", value: String(format: "%.1f kg", averageMaxWeight))
+            }
+            HStack(spacing: 10) {
+                detailStatCard(title: "平均次數", value: String(format: "%.1f 下", averageReps))
+                detailStatCard(title: "累積總量", value: String(format: "%.0f kg", totalVolume))
+            }
+            HStack {
+                Text("最近一次：\(latestDateText)")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Spacer()
+                Text("共 \(sessions.count) 次訓練")
+                    .font(.caption.bold())
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private var weightTrendCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("重量變化趨勢")
+                .font(.subheadline.bold())
+                .foregroundStyle(.white.opacity(0.9))
+
+            if trend.isEmpty {
+                Text("目前沒有可顯示的資料")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.65))
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                Chart(trend) { point in
+                    AreaMark(
+                        x: .value("日期", point.date),
+                        y: .value("重量", point.maxWeight)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                whAccentColor.opacity(0.35),
+                                whAccentColor.opacity(0.05),
+                                .clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    LineMark(
+                        x: .value("日期", point.date),
+                        y: .value("重量", point.maxWeight)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(whAccentColor)
+                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+
+                    PointMark(
+                        x: .value("日期", point.date),
+                        y: .value("重量", point.maxWeight)
+                    )
+                    .foregroundStyle(.white)
+                    .symbolSize(46)
+                }
+                .chartYScale(domain: yDomain)
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
+                            .foregroundStyle(Color.white.opacity(0.12))
+                        AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+                            .foregroundStyle(Color.white.opacity(0.65))
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
+                            .foregroundStyle(Color.white.opacity(0.12))
+                        AxisValueLabel()
+                            .foregroundStyle(Color.white.opacity(0.65))
+                    }
+                }
+                .chartPlotStyle { plot in
+                    plot
+                        .background(Color.white.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .frame(height: 180)
+            }
+        }
+        .padding(14)
+        .background(whCardColor)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var recentRecordsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("近期紀錄")
+                .font(.subheadline.bold())
+                .foregroundStyle(.white.opacity(0.9))
+
+            ForEach(Array(trend.reversed().prefix(8))) { item in
+                HStack(spacing: 10) {
+                    Text(dateText(item.date))
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.65))
+                        .frame(width: 72, alignment: .leading)
+
+                    Text(String(format: "%.1f kg", item.maxWeight))
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .frame(width: 72, alignment: .leading)
+
+                    Text("\(item.setCount) 組")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .frame(width: 42, alignment: .leading)
+
+                    Spacer()
+
+                    Text(String(format: "%.0f kg", item.volume))
+                        .font(.caption.bold())
+                        .foregroundStyle(whAccentColor)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(14)
+        .background(whCardColor)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func detailStatCard(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.65))
+            Text(value)
+                .font(.headline.bold())
+                .foregroundStyle(.white)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(whCardColor)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func dateText(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M/d"
+        return fmt.string(from: date)
     }
 }
 
@@ -1375,9 +1825,29 @@ private struct ExercisePickerSheet: View {
     let onSelect: (Exercise) -> Void
     @State private var search = ""
 
+    private var normalizedSearch: String {
+        search.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private var filtered: [Exercise] {
         let q = search.lowercased().trimmingCharacters(in: .whitespaces)
         return q.isEmpty ? state.exercises : state.exercises.filter { $0.name.lowercased().contains(q) }
+    }
+
+    private var canQuickAddFromSearch: Bool {
+        guard !normalizedSearch.isEmpty else { return false }
+        return !state.exercises.contains {
+            $0.name.compare(normalizedSearch, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+        }
+    }
+
+    private var quickAddExercise: Exercise {
+        state.upsertExerciseFromPlan(
+            name: normalizedSearch,
+            muscleGroup: "自訂",
+            defaultSets: 4,
+            restSeconds: 90
+        )
     }
 
     private let bg    = Color.white
@@ -1391,27 +1861,52 @@ private struct ExercisePickerSheet: View {
                 VStack(spacing: 0) {
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass").foregroundStyle(Color.gray.opacity(0.7))
-                        TextField("搜尋動作", text: $search).foregroundColor(Color.black).tint(green)
+                        TextField("搜尋或輸入新動作名稱", text: $search).foregroundColor(Color.black).tint(green)
                     }
                     .padding(12).background(soft)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .padding(.horizontal, 20).padding(.vertical, 12)
 
-                    List(filtered) { ex in
-                        Button {
-                            onSelect(ex); dismiss()
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(ex.name).font(.headline).foregroundStyle(Color.black.opacity(0.85))
-                                    Text("\(ex.muscleGroup) · \(ex.defaultSets) 組").font(.caption).foregroundStyle(Color.gray)
+                    List {
+                        if canQuickAddFromSearch {
+                            Button {
+                                onSelect(quickAddExercise)
+                                dismiss()
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("新增到菜單")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(green)
+                                        Text(normalizedSearch)
+                                            .font(.headline)
+                                            .foregroundStyle(Color.black.opacity(0.85))
+                                    }
+                                    Spacer()
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundStyle(green)
                                 }
-                                Spacer()
-                                Image(systemName: "plus.circle").foregroundStyle(green)
                             }
+                            .buttonStyle(.plain)
+                            .listRowBackground(bg)
                         }
-                        .buttonStyle(.plain)
-                        .listRowBackground(bg)
+
+                        ForEach(filtered) { ex in
+                            Button {
+                                onSelect(ex); dismiss()
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(ex.name).font(.headline).foregroundStyle(Color.black.opacity(0.85))
+                                        Text("\(ex.muscleGroup) · \(ex.defaultSets) 組").font(.caption).foregroundStyle(Color.gray)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "plus.circle").foregroundStyle(green)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .listRowBackground(bg)
+                        }
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)

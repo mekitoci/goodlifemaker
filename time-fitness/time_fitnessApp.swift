@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct time_fitnessApp: App {
+struct PotlyApp: App {
 
     var body: some Scene {
         WindowGroup {

@@ -94,6 +94,7 @@
 		2F509B112F69E5AF00750521 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2F509B132F69E5AF00750521 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RestTimerAttributes.swift; sourceTree = "<group>"; };
+		2F509B1F2F6B053E00750521 /* time-fitness.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "time-fitness.entitlements"; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000001 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000003 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
@@ -163,6 +164,7 @@
 		2F509AD02F658D8900750521 /* time-fitness */ = {
 			isa = PBXGroup;
 			children = (
+				2F509B1F2F6B053E00750521 /* time-fitness.entitlements */,
 				2F509AD12F658D8900750521 /* time_fitnessApp.swift */,
 				2F509AD32F658D8900750521 /* ContentView.swift */,
 				2F509AD52F658D8B00750521 /* Assets.xcassets */,
@@ -577,12 +579,15 @@
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "time-fitness/time-fitness.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"time-fitness/Preview Content\"";
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleName = Potly;
+				INFOPLIST_KEY_CFBundleDisplayName = Potly;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "we need you workout data to improve your life.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -609,12 +614,15 @@
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "time-fitness/time-fitness.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"time-fitness/Preview Content\"";
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleName = Potly;
+				INFOPLIST_KEY_CFBundleDisplayName = Potly;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "we need you workout data to improve your life.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

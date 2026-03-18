@@ -467,7 +467,7 @@ private struct QuickStartSection: View {
 
     // 今日狀態摘要卡
     private var todayStatsCard: some View {
-        let calorieBarProgress = min(max(state.todayCalories / 900.0, 0.08), 1.0)
+        let calorieBarProgress = min(max(state.todayCalories / 900.0, 0.0), 1.0)
 
         return HStack(spacing: 12) {
             // 左側：消耗主資訊
@@ -496,15 +496,17 @@ private struct QuickStartSection: View {
                         Capsule()
                             .fill(.white.opacity(0.16))
                             .frame(height: 10)
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [.orange.opacity(0.7), .yellow, .orange.opacity(0.7)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
+                        if calorieBarProgress > 0 {
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.orange.opacity(0.7), .yellow, .orange.opacity(0.7)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
                                 )
-                            )
-                            .frame(width: max(24, proxy.size.width * calorieBarProgress), height: 10)
+                                .frame(width: proxy.size.width * calorieBarProgress, height: 10)
+                        }
                     }
                 }
                 .frame(height: 10)

@@ -54,22 +54,182 @@ final class AppState {
         didSet { UserDefaults.standard.set(healthKitRequested, forKey: AppState.healthKitRequestedKey) }
     }
     private var lastHealthKitRefreshAt: Date = .distantPast
+    private var lastHealthKitMinuteStamp: Int = -1
 
     // MARK: - Exercise catalog（支援 CRUD，UserDefaults 持久化）
 
     private static let exercisesKey = "user_exercises_v1"
 
-    private static let defaultExercises: [Exercise] = [
-        .init(name: "槓鈴臥推",  muscleGroup: "胸",   defaultSets: 4, restSeconds: 90),
-        .init(name: "啞鈴飛鳥",  muscleGroup: "胸",   defaultSets: 4, restSeconds: 90),
-        .init(name: "引體向上",  muscleGroup: "背",   defaultSets: 4, restSeconds: 90),
-        .init(name: "啞鈴划船",  muscleGroup: "背",   defaultSets: 4, restSeconds: 90),
-        .init(name: "深蹲",     muscleGroup: "腿",   defaultSets: 4, restSeconds: 120),
-        .init(name: "腿舉",     muscleGroup: "腿",   defaultSets: 4, restSeconds: 90),
-        .init(name: "肩推",     muscleGroup: "肩",   defaultSets: 4, restSeconds: 90),
-        .init(name: "二頭彎舉", muscleGroup: "手臂",  defaultSets: 3, restSeconds: 60),
-        .init(name: "三頭下壓", muscleGroup: "手臂",  defaultSets: 3, restSeconds: 60),
+    private struct ExerciseSeed {
+        let name: String
+        let sets: Int
+        let rest: Int
+    }
+
+    /// 依肌群分組，後續擴充字典只需要在這裡加條目
+    private static let defaultExerciseCatalog: [String: [ExerciseSeed]] = [
+        "胸": [
+            .init(name: "槓鈴臥推", sets: 4, rest: 90),
+            .init(name: "啞鈴臥推", sets: 4, rest: 90),
+            .init(name: "上斜啞鈴臥推", sets: 4, rest: 90),
+            .init(name: "下斜臥推", sets: 4, rest: 90),
+            .init(name: "啞鈴飛鳥", sets: 4, rest: 90),
+            .init(name: "機械夾胸", sets: 4, rest: 75),
+            .init(name: "機械胸推", sets: 4, rest: 90),
+            .init(name: "機械上胸推", sets: 4, rest: 90),
+            .init(name: "機械下胸推", sets: 4, rest: 90),
+            .init(name: "機械平胸推", sets: 4, rest: 90),
+            .init(name: "蝴蝶機夾胸", sets: 4, rest: 75),
+            .init(name: "雙槓撐體", sets: 3, rest: 90)
+        ],
+        "背": [
+            .init(name: "引體向上", sets: 4, rest: 90),
+            .init(name: "高位下拉", sets: 4, rest: 90),
+            .init(name: "坐姿划船", sets: 4, rest: 90),
+            .init(name: "啞鈴划船", sets: 4, rest: 90),
+            .init(name: "槓鈴划船", sets: 4, rest: 90),
+            .init(name: "繩索划船", sets: 4, rest: 75),
+            .init(name: "直臂下拉", sets: 3, rest: 60),
+            .init(name: "機械划船", sets: 4, rest: 90),
+            .init(name: "機械下拉", sets: 4, rest: 90),
+            .init(name: "機械背闊下拉", sets: 4, rest: 90),
+            .init(name: "機械反手下拉", sets: 4, rest: 90),
+            .init(name: "面拉", sets: 3, rest: 60)
+        ],
+        "肩": [
+            .init(name: "槓鈴肩推", sets: 4, rest: 90),
+            .init(name: "啞鈴肩推", sets: 4, rest: 90),
+            .init(name: "阿諾肩推", sets: 4, rest: 90),
+            .init(name: "啞鈴側平舉", sets: 4, rest: 60),
+            .init(name: "啞鈴前平舉", sets: 3, rest: 60),
+            .init(name: "反向飛鳥", sets: 4, rest: 60),
+            .init(name: "機械肩推", sets: 4, rest: 90),
+            .init(name: "機械側平舉", sets: 4, rest: 60),
+            .init(name: "機械後三角飛鳥", sets: 4, rest: 60),
+            .init(name: "機械前平舉", sets: 3, rest: 60),
+            .init(name: "直立划船", sets: 3, rest: 75)
+        ],
+        "手臂": [
+            .init(name: "槓鈴二頭彎舉", sets: 3, rest: 60),
+            .init(name: "啞鈴二頭彎舉", sets: 3, rest: 60),
+            .init(name: "槌式彎舉", sets: 3, rest: 60),
+            .init(name: "繩索彎舉", sets: 3, rest: 60),
+            .init(name: "機械二頭彎舉", sets: 3, rest: 60),
+            .init(name: "窄握臥推", sets: 4, rest: 90),
+            .init(name: "繩索下壓", sets: 3, rest: 60),
+            .init(name: "機械三頭下壓", sets: 3, rest: 60),
+            .init(name: "機械雙臂屈伸", sets: 3, rest: 75),
+            .init(name: "仰臥臂屈伸", sets: 3, rest: 60),
+            .init(name: "啞鈴後三頭伸展", sets: 3, rest: 60)
+        ],
+        "腿": [
+            .init(name: "深蹲", sets: 4, rest: 120),
+            .init(name: "前蹲", sets: 4, rest: 120),
+            .init(name: "硬舉", sets: 4, rest: 120),
+            .init(name: "羅馬尼亞硬舉", sets: 4, rest: 90),
+            .init(name: "腿推", sets: 4, rest: 90),
+            .init(name: "腿屈伸", sets: 4, rest: 75),
+            .init(name: "腿後勾", sets: 4, rest: 75),
+            .init(name: "機械髖外展", sets: 3, rest: 60),
+            .init(name: "機械髖內收", sets: 3, rest: 60),
+            .init(name: "史密斯深蹲", sets: 4, rest: 90),
+            .init(name: "史密斯弓箭步", sets: 3, rest: 90),
+            .init(name: "機械臀推", sets: 4, rest: 90),
+            .init(name: "機械提踵", sets: 4, rest: 60),
+            .init(name: "保加利亞分腿蹲", sets: 3, rest: 90),
+            .init(name: "弓箭步", sets: 3, rest: 75),
+            .init(name: "臀推", sets: 4, rest: 90),
+            .init(name: "提踵", sets: 4, rest: 60)
+        ],
+        "核心": [
+            .init(name: "平板支撐", sets: 3, rest: 45),
+            .init(name: "側平板", sets: 3, rest: 45),
+            .init(name: "捲腹", sets: 3, rest: 45),
+            .init(name: "仰臥抬腿", sets: 3, rest: 45),
+            .init(name: "懸垂抬腿", sets: 3, rest: 60),
+            .init(name: "俄羅斯轉體", sets: 3, rest: 45),
+            .init(name: "機械捲腹", sets: 3, rest: 45),
+            .init(name: "機械旋轉核心", sets: 3, rest: 45),
+            .init(name: "死蟲", sets: 3, rest: 45)
+        ]
     ]
+
+    private static var defaultExercises: [Exercise] {
+        defaultExerciseCatalog
+            .sorted(by: { $0.key < $1.key })
+            .flatMap { group, seeds in
+                seeds.map {
+                    Exercise(
+                        name: $0.name,
+                        muscleGroup: group,
+                        defaultSets: $0.sets,
+                        restSeconds: $0.rest
+                    )
+                }
+            }
+    }
+
+    private static func cleanedExerciseName(_ raw: String) -> String {
+        // 移除英文，保留中文與常見符號，並去掉空白
+        let noEnglish = raw.replacingOccurrences(
+            of: "[A-Za-z]+",
+            with: "",
+            options: .regularExpression
+        )
+        let noSpaces = noEnglish.replacingOccurrences(
+            of: "\\s+",
+            with: "",
+            options: .regularExpression
+        )
+        return noSpaces.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func hasCJK(_ text: String) -> Bool {
+        text.range(of: "[\\u4E00-\\u9FFF]", options: .regularExpression) != nil
+    }
+
+    private static func sanitizeExercises(_ source: [Exercise]) -> [Exercise] {
+        var seen = Set<String>()
+        var result: [Exercise] = []
+
+        for ex in source {
+            let name = cleanedExerciseName(ex.name)
+            guard !name.isEmpty, hasCJK(name) else { continue }
+
+            let group = ex.muscleGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "全身"
+                : ex.muscleGroup
+            let sets = max(1, ex.defaultSets)
+            let rest = max(30, ex.restSeconds)
+            let key = "\(group)|\(name)"
+            guard seen.insert(key).inserted else { continue }
+
+            result.append(
+                Exercise(
+                    id: ex.id,
+                    name: name,
+                    muscleGroup: group,
+                    defaultSets: sets,
+                    restSeconds: rest
+                )
+            )
+        }
+
+        return result
+    }
+
+    private static func mergedExerciseDictionary(saved: [Exercise]) -> [Exercise] {
+        var merged = sanitizeExercises(saved)
+        var keys = Set(merged.map { "\($0.muscleGroup)|\($0.name)" })
+
+        for ex in defaultExercises {
+            let key = "\(ex.muscleGroup)|\(ex.name)"
+            if keys.insert(key).inserted {
+                merged.append(ex)
+            }
+        }
+        return merged
+    }
 
     var exercises: [Exercise] = [] {
         didSet { saveExercises() }
@@ -78,7 +238,7 @@ final class AppState {
     private func loadExercises() {
         if let data = UserDefaults.standard.data(forKey: Self.exercisesKey),
            let saved = try? JSONDecoder().decode([Exercise].self, from: data) {
-            exercises = saved
+            exercises = Self.mergedExerciseDictionary(saved: saved)
         } else {
             exercises = Self.defaultExercises
         }
@@ -93,17 +253,73 @@ final class AppState {
     // MARK: Exercise CRUD
 
     func addExercise(_ exercise: Exercise) {
-        exercises.append(exercise)
+        let cleaned = Self.cleanedExerciseName(exercise.name)
+        guard !cleaned.isEmpty, Self.hasCJK(cleaned) else { return }
+        let normalized = Exercise(
+            id: exercise.id,
+            name: cleaned,
+            muscleGroup: exercise.muscleGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "全身" : exercise.muscleGroup,
+            defaultSets: max(1, exercise.defaultSets),
+            restSeconds: max(30, exercise.restSeconds)
+        )
+        let key = "\(normalized.muscleGroup)|\(normalized.name)"
+        if !exercises.contains(where: { "\($0.muscleGroup)|\($0.name)" == key }) {
+            exercises.append(normalized)
+        }
     }
 
     func updateExercise(_ exercise: Exercise) {
         if let idx = exercises.firstIndex(where: { $0.id == exercise.id }) {
-            exercises[idx] = exercise
+            let cleaned = Self.cleanedExerciseName(exercise.name)
+            guard !cleaned.isEmpty, Self.hasCJK(cleaned) else {
+                exercises.remove(at: idx)
+                return
+            }
+            exercises[idx] = Exercise(
+                id: exercise.id,
+                name: cleaned,
+                muscleGroup: exercise.muscleGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "全身" : exercise.muscleGroup,
+                defaultSets: max(1, exercise.defaultSets),
+                restSeconds: max(30, exercise.restSeconds)
+            )
         }
     }
 
     func deleteExercise(_ exercise: Exercise) {
         exercises.removeAll { $0.id == exercise.id }
+    }
+
+    /// 從「訓練菜單」快速新增動作時使用：
+    /// - 保留原始名稱（包含英文）
+    /// - 若同名動作已存在則直接回傳既有項目
+    @discardableResult
+    func upsertExerciseFromPlan(
+        name rawName: String,
+        muscleGroup rawGroup: String = "自訂",
+        defaultSets: Int = 4,
+        restSeconds: Int = 90
+    ) -> Exercise {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let group = rawGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? "自訂"
+            : rawGroup.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let existing = exercises.first(where: {
+            $0.muscleGroup == group &&
+            $0.name.compare(name, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+        }) {
+            return existing
+        }
+
+        let created = Exercise(
+            id: UUID(),
+            name: name.isEmpty ? "未命名動作" : name,
+            muscleGroup: group,
+            defaultSets: max(1, defaultSets),
+            restSeconds: max(30, restSeconds)
+        )
+        exercises.append(created)
+        return created
     }
 
     // MARK: - Workout Plans
@@ -131,16 +347,22 @@ final class AppState {
         activePlanQueue = plan.items
         activePlanIndex = 0
         if let first = activePlanQueue.first, let ex = exercises.first(where: { $0.id == first.exerciseID }) {
-            weightKg = first.targetWeightKg
-            selectedReps = first.targetReps
-            startExercise(ex)
+            startExercise(
+                ex,
+                totalSetsOverride: first.sets,
+                weightKgOverride: first.targetWeightKg,
+                repsOverride: first.targetReps
+            )
         } else if let first = activePlanQueue.first {
             // exercise was deleted but plan item still has name - create a temp exercise
             let tempEx = Exercise(id: first.exerciseID, name: first.exerciseName,
                                   muscleGroup: first.muscleGroup, defaultSets: first.sets, restSeconds: 90)
-            weightKg = first.targetWeightKg
-            selectedReps = first.targetReps
-            startExercise(tempEx)
+            startExercise(
+                tempEx,
+                totalSetsOverride: first.sets,
+                weightKgOverride: first.targetWeightKg,
+                repsOverride: first.targetReps
+            )
         }
     }
 
@@ -150,9 +372,12 @@ final class AppState {
         let ex = exercises.first(where: { $0.id == next.exerciseID })
             ?? Exercise(id: next.exerciseID, name: next.exerciseName,
                         muscleGroup: next.muscleGroup, defaultSets: next.sets, restSeconds: 90)
-        weightKg = next.targetWeightKg
-        selectedReps = next.targetReps
-        startExercise(ex)
+        startExercise(
+            ex,
+            totalSetsOverride: next.sets,
+            weightKgOverride: next.targetWeightKg,
+            repsOverride: next.targetReps
+        )
     }
 
     func clearActivePlan() {
@@ -678,9 +903,16 @@ final class AppState {
 
     // MARK: - Actions
 
-    func startExercise(_ exercise: Exercise) {
+    func startExercise(
+        _ exercise: Exercise,
+        totalSetsOverride: Int? = nil,
+        weightKgOverride: Double? = nil,
+        repsOverride: Int? = nil
+    ) {
         // 未選盆栽或已達 100% 必須換盆時，不可開始運動
         guard hasSelectedPlant else {
+            switchPotPromptMessage = "請先到花園選擇要栽培的盆栽，才能開始運動。"
+            showSwitchPotPrompt = true
             homeTab = .garden
             screen = .home
             return
@@ -695,9 +927,17 @@ final class AppState {
 
         selectedExercise = exercise
         currentSet       = 1
-        totalSets        = exercise.defaultSets
-        weightKg         = (lastExerciseName == exercise.name) ? lastWeight : 60
-        selectedReps     = lastReps
+        totalSets        = max(1, totalSetsOverride ?? exercise.defaultSets)
+        if let weightKgOverride {
+            weightKg = max(0, weightKgOverride)
+        } else {
+            weightKg = (lastExerciseName == exercise.name) ? lastWeight : 60
+        }
+        if let repsOverride {
+            selectedReps = max(1, repsOverride)
+        } else {
+            selectedReps = lastReps
+        }
         setRecords       = []
         pendingWaterGain = 0
         workoutPhase     = .training
@@ -761,6 +1001,8 @@ final class AppState {
     }
 
     func handleCountdownTick() {
+        tickHealthKitMinuteRefresh()
+
         guard workoutPhase == .resting else { return }
         if let start = restStartDate {
             let elapsed = Int(Date().timeIntervalSince(start))
@@ -769,6 +1011,13 @@ final class AppState {
             remainingRestSeconds = max(0, remainingRestSeconds - 1)
         }
         if remainingRestSeconds == 0 { endRest() }
+    }
+
+    private func tickHealthKitMinuteRefresh() {
+        let minuteStamp = Int(Date().timeIntervalSince1970 / 60)
+        guard minuteStamp != lastHealthKitMinuteStamp else { return }
+        lastHealthKitMinuteStamp = minuteStamp
+        refreshHealthKitTodayStatsIfNeeded(force: false)
     }
 
     func endRest() {

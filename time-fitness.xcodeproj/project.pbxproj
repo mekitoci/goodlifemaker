@@ -16,6 +16,22 @@
 		2F509AE82F658D8B00750521 /* time_fitnessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509AE72F658D8B00750521 /* time_fitnessTests.swift */; };
 		2F509AF22F658D8B00750521 /* time_fitnessUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509AF12F658D8B00750521 /* time_fitnessUITests.swift */; };
 		2F509AF42F658D8B00750521 /* time_fitnessUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509AF32F658D8B00750521 /* time_fitnessUITestsLaunchTests.swift */; };
+		2F509B072F69E5AD00750521 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F509B062F69E5AD00750521 /* WidgetKit.framework */; };
+		2F509B092F69E5AD00750521 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F509B082F69E5AD00750521 /* SwiftUI.framework */; };
+		2F509B0C2F69E5AD00750521 /* RestTimerWidgetExtensionBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B0B2F69E5AD00750521 /* RestTimerWidgetExtensionBundle.swift */; };
+		2F509B0E2F69E5AD00750521 /* RestTimerWidgetExtensionLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B0D2F69E5AD00750521 /* RestTimerWidgetExtensionLiveActivity.swift */; };
+		2F509B102F69E5AD00750521 /* RestTimerWidgetExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B0F2F69E5AD00750521 /* RestTimerWidgetExtension.swift */; };
+		2F509B122F69E5AF00750521 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2F509B112F69E5AF00750521 /* Assets.xcassets */; };
+		2F509B162F69E5AF00750521 /* RestTimerWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2F509B042F69E5AD00750521 /* RestTimerWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2F509B1D2F69E8D400750521 /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */; };
+		2F509B1E2F69E91800750521 /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */; };
+		AA100001FFFFFFFF00000001 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000001 /* AppState.swift */; };
+		AA100001FFFFFFFF00000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000002 /* Models.swift */; };
+		AA100001FFFFFFFF00000003 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000003 /* Extensions.swift */; };
+		AA100001FFFFFFFF00000004 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000004 /* HomeView.swift */; };
+		AA100001FFFFFFFF00000005 /* DictionaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000005 /* DictionaryView.swift */; };
+		AA100001FFFFFFFF00000006 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000006 /* WorkoutView.swift */; };
+		AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000007 /* GardenView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,7 +49,28 @@
 			remoteGlobalIDString = 2F509ACD2F658D8900750521;
 			remoteInfo = "time-fitness";
 		};
+		2F509B142F69E5AF00750521 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2F509AC62F658D8900750521 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2F509B032F69E5AD00750521;
+			remoteInfo = RestTimerWidgetExtensionExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2F509B172F69E5AF00750521 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2F509B162F69E5AF00750521 /* RestTimerWidgetExtensionExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2F509ACE2F658D8900750521 /* time-fitness.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "time-fitness.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -48,6 +85,22 @@
 		2F509AED2F658D8B00750521 /* time-fitnessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "time-fitnessUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F509AF12F658D8B00750521 /* time_fitnessUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = time_fitnessUITests.swift; sourceTree = "<group>"; };
 		2F509AF32F658D8B00750521 /* time_fitnessUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = time_fitnessUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		2F509B042F69E5AD00750521 /* RestTimerWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RestTimerWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		2F509B062F69E5AD00750521 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		2F509B082F69E5AD00750521 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		2F509B0B2F69E5AD00750521 /* RestTimerWidgetExtensionBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerWidgetExtensionBundle.swift; sourceTree = "<group>"; };
+		2F509B0D2F69E5AD00750521 /* RestTimerWidgetExtensionLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerWidgetExtensionLiveActivity.swift; sourceTree = "<group>"; };
+		2F509B0F2F69E5AD00750521 /* RestTimerWidgetExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerWidgetExtension.swift; sourceTree = "<group>"; };
+		2F509B112F69E5AF00750521 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		2F509B132F69E5AF00750521 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RestTimerAttributes.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000001 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000003 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000004 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000005 /* DictionaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryView.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000006 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000007 /* GardenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GardenView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +125,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2F509B012F69E5AD00750521 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2F509B092F69E5AD00750521 /* SwiftUI.framework in Frameworks */,
+				2F509B072F69E5AD00750521 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -81,6 +143,8 @@
 				2F509AD02F658D8900750521 /* time-fitness */,
 				2F509AE62F658D8B00750521 /* time-fitnessTests */,
 				2F509AF02F658D8B00750521 /* time-fitnessUITests */,
+				2F509B0A2F69E5AD00750521 /* RestTimerWidgetExtension */,
+				2F509B052F69E5AD00750521 /* Frameworks */,
 				2F509ACF2F658D8900750521 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -91,6 +155,7 @@
 				2F509ACE2F658D8900750521 /* time-fitness.app */,
 				2F509AE32F658D8B00750521 /* time-fitnessTests.xctest */,
 				2F509AED2F658D8B00750521 /* time-fitnessUITests.xctest */,
+				2F509B042F69E5AD00750521 /* RestTimerWidgetExtensionExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -103,6 +168,13 @@
 				2F509AD52F658D8B00750521 /* Assets.xcassets */,
 				2F509ADA2F658D8B00750521 /* Persistence.swift */,
 				2F509ADC2F658D8B00750521 /* time_fitness.xcdatamodeld */,
+				AA200001FFFFFFFF00000001 /* AppState.swift */,
+				AA200001FFFFFFFF00000002 /* Models.swift */,
+				AA200001FFFFFFFF00000003 /* Extensions.swift */,
+				AA200001FFFFFFFF00000004 /* HomeView.swift */,
+				AA200001FFFFFFFF00000005 /* DictionaryView.swift */,
+				AA200001FFFFFFFF00000006 /* WorkoutView.swift */,
+				AA200001FFFFFFFF00000007 /* GardenView.swift */,
 				2F509AD72F658D8B00750521 /* Preview Content */,
 			);
 			path = "time-fitness";
@@ -133,6 +205,28 @@
 			path = "time-fitnessUITests";
 			sourceTree = "<group>";
 		};
+		2F509B052F69E5AD00750521 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				2F509B062F69E5AD00750521 /* WidgetKit.framework */,
+				2F509B082F69E5AD00750521 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		2F509B0A2F69E5AD00750521 /* RestTimerWidgetExtension */ = {
+			isa = PBXGroup;
+			children = (
+				2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */,
+				2F509B0B2F69E5AD00750521 /* RestTimerWidgetExtensionBundle.swift */,
+				2F509B0D2F69E5AD00750521 /* RestTimerWidgetExtensionLiveActivity.swift */,
+				2F509B0F2F69E5AD00750521 /* RestTimerWidgetExtension.swift */,
+				2F509B112F69E5AF00750521 /* Assets.xcassets */,
+				2F509B132F69E5AF00750521 /* Info.plist */,
+			);
+			path = RestTimerWidgetExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -143,10 +237,12 @@
 				2F509ACA2F658D8900750521 /* Sources */,
 				2F509ACB2F658D8900750521 /* Frameworks */,
 				2F509ACC2F658D8900750521 /* Resources */,
+				2F509B172F69E5AF00750521 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				2F509B152F69E5AF00750521 /* PBXTargetDependency */,
 			);
 			name = "time-fitness";
 			productName = "time-fitness";
@@ -189,6 +285,23 @@
 			productReference = 2F509AED2F658D8B00750521 /* time-fitnessUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		2F509B032F69E5AD00750521 /* RestTimerWidgetExtensionExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2F509B1A2F69E5AF00750521 /* Build configuration list for PBXNativeTarget "RestTimerWidgetExtensionExtension" */;
+			buildPhases = (
+				2F509B002F69E5AD00750521 /* Sources */,
+				2F509B012F69E5AD00750521 /* Frameworks */,
+				2F509B022F69E5AD00750521 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RestTimerWidgetExtensionExtension;
+			productName = RestTimerWidgetExtensionExtension;
+			productReference = 2F509B042F69E5AD00750521 /* RestTimerWidgetExtensionExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -210,6 +323,9 @@
 						CreatedOnToolsVersion = 15.4;
 						TestTargetID = 2F509ACD2F658D8900750521;
 					};
+					2F509B032F69E5AD00750521 = {
+						CreatedOnToolsVersion = 15.4;
+					};
 				};
 			};
 			buildConfigurationList = 2F509AC92F658D8900750521 /* Build configuration list for PBXProject "time-fitness" */;
@@ -228,6 +344,7 @@
 				2F509ACD2F658D8900750521 /* time-fitness */,
 				2F509AE22F658D8B00750521 /* time-fitnessTests */,
 				2F509AEC2F658D8B00750521 /* time-fitnessUITests */,
+				2F509B032F69E5AD00750521 /* RestTimerWidgetExtensionExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -256,6 +373,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2F509B022F69E5AD00750521 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2F509B122F69E5AF00750521 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -267,6 +392,14 @@
 				2F509AD42F658D8900750521 /* ContentView.swift in Sources */,
 				2F509AD22F658D8900750521 /* time_fitnessApp.swift in Sources */,
 				2F509ADE2F658D8B00750521 /* time_fitness.xcdatamodeld in Sources */,
+				AA100001FFFFFFFF00000001 /* AppState.swift in Sources */,
+				AA100001FFFFFFFF00000002 /* Models.swift in Sources */,
+				2F509B1D2F69E8D400750521 /* RestTimerAttributes.swift in Sources */,
+				AA100001FFFFFFFF00000003 /* Extensions.swift in Sources */,
+				AA100001FFFFFFFF00000004 /* HomeView.swift in Sources */,
+				AA100001FFFFFFFF00000005 /* DictionaryView.swift in Sources */,
+				AA100001FFFFFFFF00000006 /* WorkoutView.swift in Sources */,
+				AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -287,6 +420,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2F509B002F69E5AD00750521 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2F509B102F69E5AD00750521 /* RestTimerWidgetExtension.swift in Sources */,
+				2F509B0E2F69E5AD00750521 /* RestTimerWidgetExtensionLiveActivity.swift in Sources */,
+				2F509B1E2F69E91800750521 /* RestTimerAttributes.swift in Sources */,
+				2F509B0C2F69E5AD00750521 /* RestTimerWidgetExtensionBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -299,6 +443,11 @@
 			isa = PBXTargetDependency;
 			target = 2F509ACD2F658D8900750521 /* time-fitness */;
 			targetProxy = 2F509AEE2F658D8B00750521 /* PBXContainerItemProxy */;
+		};
+		2F509B152F69E5AF00750521 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2F509B032F69E5AD00750521 /* RestTimerWidgetExtensionExtension */;
+			targetProxy = 2F509B142F69E5AF00750521 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -425,6 +574,7 @@
 		2F509AF82F658D8B00750521 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -433,6 +583,7 @@
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -454,6 +605,7 @@
 		2F509AF92F658D8B00750521 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
@@ -462,6 +614,7 @@
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -556,6 +709,60 @@
 			};
 			name = Release;
 		};
+		2F509B182F69E5AF00750521 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23MWC59SYK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RestTimerWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RestTimerWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cooly.time-fitness.RestTimerWidgetExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		2F509B192F69E5AF00750521 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 23MWC59SYK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RestTimerWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RestTimerWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "cooly.time-fitness.RestTimerWidgetExtension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -591,6 +798,15 @@
 			buildConfigurations = (
 				2F509AFE2F658D8B00750521 /* Debug */,
 				2F509AFF2F658D8B00750521 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2F509B1A2F69E5AF00750521 /* Build configuration list for PBXNativeTarget "RestTimerWidgetExtensionExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2F509B182F69E5AF00750521 /* Debug */,
+				2F509B192F69E5AF00750521 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

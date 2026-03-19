@@ -407,6 +407,22 @@ final class AppState {
     init() {
         loadExercises()
         loadPlans()
+        normalizePlantSelectionState()
+    }
+
+    private func normalizePlantSelectionState() {
+        if !hasSelectedPlant {
+            // First launch: explicitly keep "no pot selected" state.
+            selectedPlantID = 0
+            plantHydration = 0
+            mustSwitchPot = false
+            return
+        }
+
+        // Existing users: keep data, but repair invalid ID if needed.
+        if !plantCatalog.contains(where: { $0.id == selectedPlantID }) {
+            selectedPlantID = plantCatalog.first?.id ?? 1
+        }
     }
 
     let plantCatalog: [PlantCatalogEntry] = [
@@ -500,8 +516,10 @@ final class AppState {
     // MARK: - Persistent plant data (UserDefaults-backed)
 
     var selectedPlantID: Int = {
-        let stored = UserDefaults.standard.integer(forKey: "selectedPlantID")
-        return stored == 0 ? 1 : stored
+        if let stored = UserDefaults.standard.object(forKey: "selectedPlantID") as? Int {
+            return stored
+        }
+        return 0
     }() { didSet { UserDefaults.standard.set(selectedPlantID, forKey: "selectedPlantID") } }
 
     /// 使用者是否已經主動選過盆栽（未選時禁止開始運動）
@@ -602,6 +620,16 @@ final class AppState {
     /// HealthKit 今日運動紀錄數（跑步/球類等 workout）
     var todayHealthWorkoutCount: Int = 0
 
+    /// 步數換算熱量（粗估）：每步約 0.04 kcal
+    var todayStepCalories: Double {
+        Double(todayStepCount) * 0.04
+    }
+
+    /// 今日總消耗（訓練 + 步數）
+    var todayTotalCalories: Double {
+        todayCalories + todayStepCalories
+    }
+
     /// 連續訓練天數
     var workoutStreak: Int = {
         UserDefaults.standard.integer(forKey: "workoutStreak")
@@ -633,6 +661,7 @@ final class AppState {
     var selectedExercise: Exercise?
     var currentSet: Int = 1
     var totalSets: Int = 4
+    var currentSetStartTime: Date = .now
     var weightKg: Double = 60
     var editingWeight: Bool = false
     var weightInputText: String = ""
@@ -653,9 +682,10 @@ final class AppState {
     // MARK: - Computed helpers
 
     var currentPlant: PlantCatalogEntry {
-        plantCatalog.first(where: { $0.id == selectedPlantID })
-        ?? plantCatalog.first
-        ?? .fallback
+        if !hasSelectedPlant { return .unselected }
+        return plantCatalog.first(where: { $0.id == selectedPlantID })
+            ?? plantCatalog.first
+            ?? .fallback
     }
 
     var weightUnit: WeightUnit {
@@ -717,7 +747,7 @@ final class AppState {
         switch metric {
         case .totalActions: return totalSetsCompleted
         case .workoutStreak: return workoutStreak
-        case .todayCalories: return Int(todayCalories)
+        case .todayCalories: return Int(todayTotalCalories)
         case .lifetimeCalories: return Int(lifetimeCalories)
         case .totalPlantCompletions: return totalPlantCompletions
         case .uniquePlantsCompleted: return uniquePlantsCompletedCount
@@ -788,7 +818,7 @@ final class AppState {
     var canStartWorkout: Bool {
         hasSelectedPlant && !mustSwitchPot
     }
-    
+
     var quickStartExercise: Exercise? {
         if lastExerciseName.isEmpty { return exercises.first }
         return exercises.first(where: { $0.name == lastExerciseName }) ?? exercises.first
@@ -938,12 +968,13 @@ final class AppState {
         } else {
             selectedReps = lastReps
         }
-        setRecords       = []
-        pendingWaterGain = 0
-        workoutPhase     = .training
-        showSummaryWater = false
-        waterDropVisible = false
-        screen           = .workout
+        setRecords         = []
+        pendingWaterGain   = 0
+        currentSetStartTime = .now
+        workoutPhase       = .training
+        showSummaryWater   = false
+        waterDropVisible   = false
+        screen             = .workout
     }
 
     func tapDone() {
@@ -955,7 +986,7 @@ final class AppState {
     func confirmReps() {
         guard let exercise = selectedExercise else { return }
 
-        setRecords.append(SetRecord(setNumber: currentSet, reps: selectedReps, weight: weightKg))
+        setRecords.append(SetRecord(setNumber: currentSet, reps: selectedReps, weight: weightKg, startedAt: currentSetStartTime))
         // 澆水改為「整個動作完成一次」才計算（不是每組）
 
         lastExerciseName    = exercise.name
@@ -1025,6 +1056,7 @@ final class AppState {
         endRestLiveActivity()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        currentSetStartTime = .now
         workoutPhase = .training
     }
 
@@ -1175,20 +1207,18 @@ final class AppState {
 
 
     func canChoosePlant(_ plant: PlantCatalogEntry) -> Bool {
-        if !isPlantUnlocked(plant.id) { return false }
-        if hasSelectedPlant, !mustSwitchPot, selectedPlantID != plant.id { return false }
-        if mustSwitchPot, plant.id == selectedPlantID { return false }
-        return true
+        isPlantUnlocked(plant.id)
     }
 
     func plantSelectHint(for plant: PlantCatalogEntry) -> String {
         if !isPlantUnlocked(plant.id) {
             return "尚未解鎖：需成就積分 \(unlockRequirement(for: plant.id))（目前 \(achievementPoints)）"
         }
-        if !hasSelectedPlant { return "請選擇你今天要栽培的盆栽" }
-        if mustSwitchPot, plant.id == selectedPlantID { return "此盆栽已完成，請改選其他盆栽" }
-        if hasSelectedPlant, !mustSwitchPot, selectedPlantID != plant.id {
-            return "目前盆栽尚未完成（100%），暫時不能切換"
+        if !hasSelectedPlant {
+            return "請選擇你今天要栽培的盆栽"
+        }
+        if hasSelectedPlant, selectedPlantID != plant.id, plantHydration > 0 {
+            return "切換後會清空目前澆水進度"
         }
         return "可開始栽培"
     }
@@ -1196,18 +1226,15 @@ final class AppState {
     @discardableResult
     func choosePlant(_ plant: PlantCatalogEntry) -> Bool {
         if !isPlantUnlocked(plant.id) { return false }
-        // 尚未達 100% 前，不可切換到其他盆栽（第一盆例外）
-        if hasSelectedPlant, !mustSwitchPot, selectedPlantID != plant.id {
-            return false
-        }
-        // 若已達 100%，需切換到不同盆栽
-        if mustSwitchPot, plant.id == selectedPlantID {
-            return false
-        }
+
+        let shouldResetHydration = !hasSelectedPlant || selectedPlantID != plant.id
 
         hasSelectedPlant = true
         selectedPlantID = plant.id
-        plantHydration = 0
+        if shouldResetHydration {
+            // 允許隨時換盆，若有進度則切換時清空
+            plantHydration = 0
+        }
         mustSwitchPot = false
         showSwitchPotPrompt = false
         switchPotPromptMessage = ""

@@ -135,12 +135,14 @@ private struct PlantNameRow: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            Text(state.currentPlant.name)
+            Text(state.hasSelectedPlant ? state.currentPlant.name : "尚未選擇花盆")
                 .font(.system(size: 38, weight: .black))
                 .foregroundStyle(.white.opacity(0.96))
                 .shadow(color: .black.opacity(0.18), radius: 2, y: 2)
 
-            Text("「\(state.currentPlant.quote)」")
+            Text(state.hasSelectedPlant
+                 ? "「\(state.currentPlant.quote)」"
+                 : "先前往花園選擇今天要栽培的花盆")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.75))
                 .multilineTextAlignment(.center)
@@ -177,13 +179,15 @@ struct PlantRingCard: View {
             ringContent
 
             // Knob dot that follows the ring tip
-            let angle = state.ringProgress * 2 * Double.pi - Double.pi / 2
-            Circle()
-                .fill(Color(red: 0.84, green: 0.90, blue: 0.25))
-                .frame(width: 22, height: 22)
-                .overlay(Circle().stroke(.white, lineWidth: 3))
-                .offset(x: 124 * cos(angle), y: 124 * sin(angle))
-                .animation(.easeInOut(duration: 0.8), value: state.ringProgress)
+            if state.hasSelectedPlant {
+                let angle = state.ringProgress * 2 * Double.pi - Double.pi / 2
+                Circle()
+                    .fill(Color(red: 0.84, green: 0.90, blue: 0.25))
+                    .frame(width: 22, height: 22)
+                    .overlay(Circle().stroke(.white, lineWidth: 3))
+                    .offset(x: 124 * cos(angle), y: 124 * sin(angle))
+                    .animation(.easeInOut(duration: 0.8), value: state.ringProgress)
+            }
         }
     }
 
@@ -191,10 +195,12 @@ struct PlantRingCard: View {
         VStack(spacing: 0) {
             // 上方：百分比 + 進度
             VStack(spacing: 3) {
-                Text("\(Int(state.plantHydration))%")
+                Text(state.hasSelectedPlant ? "\(Int(state.plantHydration))%" : "--")
                     .font(.system(size: 26, weight: .black))
                     .foregroundStyle(.black)
-                Text("\(state.hydrationLevel)/\(state.currentPlant.unlockTarget)")
+                Text(state.hasSelectedPlant
+                     ? "\(state.hydrationLevel)/\(state.currentPlant.unlockTarget)"
+                     : "請先選擇花盆")
                     .font(.caption.bold())
                     .foregroundStyle(.gray)
             }
@@ -205,12 +211,20 @@ struct PlantRingCard: View {
 
             // 花盆置中於剩餘空間
             ZStack(alignment: .top) {
-                DrawableImage(path: state.currentPlant.imagePath, fallbackColor: state.plantColor)
-                    .frame(width: 100, height: 100)
-                    .scaleEffect(state.plantScale)
-                    .animation(.spring(duration: 0.5, bounce: 0.4), value: state.plantScale)
+                if state.hasSelectedPlant {
+                    DrawableImage(path: state.currentPlant.imagePath, fallbackColor: state.plantColor)
+                        .frame(width: 100, height: 100)
+                        .scaleEffect(state.plantScale)
+                        .animation(.spring(duration: 0.5, bounce: 0.4), value: state.plantScale)
+                } else {
+                    Image(systemName: "leaf.circle")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 86, height: 86)
+                        .foregroundStyle(Color(red: 0.44, green: 0.62, blue: 0.58).opacity(0.8))
+                }
 
-                if state.waterDropVisible {
+                if state.waterDropVisible, state.hasSelectedPlant {
                     HStack(spacing: 6) {
                         ForEach(0..<3, id: \.self) { _ in
                             Image(systemName: "drop.fill")
@@ -467,7 +481,7 @@ private struct QuickStartSection: View {
 
     // 今日狀態摘要卡
     private var todayStatsCard: some View {
-        let calorieBarProgress = min(max(state.todayCalories / 900.0, 0.0), 1.0)
+        let calorieBarProgress = min(max(state.todayTotalCalories / 900.0, 0.0), 1.0)
 
         return HStack(spacing: 12) {
             // 左側：消耗主資訊
@@ -483,7 +497,7 @@ private struct QuickStartSection: View {
 
                 Spacer(minLength: 8)
 
-                Text("\(Int(state.todayCalories)) kcal")
+                Text("\(Int(state.todayTotalCalories)) kcal")
                     .font(.system(size: 21, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.7)
@@ -510,7 +524,7 @@ private struct QuickStartSection: View {
                     }
                 }
                 .frame(height: 10)
-                .animation(.easeInOut(duration: 0.8), value: state.todayCalories)
+                .animation(.easeInOut(duration: 0.8), value: state.todayTotalCalories)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)

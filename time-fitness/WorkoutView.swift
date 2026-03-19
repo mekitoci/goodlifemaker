@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 // MARK: - Workout router
 
@@ -449,166 +450,358 @@ private struct SummaryView: View {
     @Environment(\.modelContext) private var modelContext
     private let sidePadding: CGFloat = 20
     private let cardRadius: CGFloat = 18
-    @State private var animateDrops: Bool = false
+    @State private var isSetLogExpanded: Bool = false
+
+    private var totalVolume: Double {
+        state.setRecords.reduce(0) { $0 + (Double($1.reps) * $1.weight) }
+    }
+
+    private var maxWeight: Double {
+        state.setRecords.map(\.weight).max() ?? 0
+    }
+
+    private var averageReps: Double {
+        guard !state.setRecords.isEmpty else { return 0 }
+        let reps = state.setRecords.reduce(0) { $0 + $1.reps }
+        return Double(reps) / Double(state.setRecords.count)
+    }
+
+    private struct PacePoint: Identifiable {
+        let id = UUID()
+        let setNumber: Int
+        let durationSeconds: Double
+        let label: String
+    }
+
+    private var pacePoints: [PacePoint] {
+        let records = state.setRecords
+        guard !records.isEmpty else { return [] }
+        return records.map { r in
+            let dur = max(0, r.exerciseDuration)
+            let mins = Int(dur) / 60
+            let secs = Int(dur) % 60
+            let label = mins > 0 ? "\(mins)m\(String(format: "%02d", secs))s" : "\(secs)s"
+            return PacePoint(setNumber: r.setNumber, durationSeconds: dur, label: label)
+        }
+    }
+
+    private var paceYDomain: ClosedRange<Double> {
+        guard !pacePoints.isEmpty else { return 0...60 }
+        let vals = pacePoints.map(\.durationSeconds)
+        let minV = vals.min() ?? 0
+        let maxV = vals.max() ?? 0
+        let spread = maxV - minV
+
+        if spread < 5 {
+            let mid = (minV + maxV) / 2
+            let half = max(mid * 0.6, 4)
+            return max(0, mid - half)...(mid + half)
+        }
+        let pad = spread * 0.25
+        return max(0, minV - pad)...(maxV + pad)
+    }
 
     var body: some View {
         ZStack {
-            Color(red: 0.44, green: 0.62, blue: 0.58).ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    Color(red: 0.42, green: 0.62, blue: 0.57),
+                    Color(red: 0.34, green: 0.55, blue: 0.52)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 16) {
-                    header
-                    plantAnimation
-                    waterGainLabel
+                VStack(spacing: 14) {
+                    completionHeroCard
+                    summaryStatsCard
+                    paceTrendCard
                     setLog
                     finishButton
                         .padding(.bottom, 44)
                 }
                 .padding(.horizontal, sidePadding)
-                .padding(.top, 24)
+                .padding(.top, 18)
             }
         }
         .onAppear {
             withAnimation(.spring(duration: 0.55).delay(0.25)) {
                 state.showSummaryWater = true
             }
-            animateDrops = true
         }
     }
 
-    private var header: some View {
-        VStack(spacing: 6) {
-            Text("訓練完成")
-                .font(.system(size: 34, weight: .black))
-                .foregroundStyle(.white)
-            if let name = state.selectedExercise?.name {
-                Text(name)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.75))
-                    .lineLimit(1)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 18)
-    }
+    @State private var heroCheckAppear: Bool = false
 
-    private var plantAnimation: some View {
-        ZStack {
-            Circle()
-                .fill(.white.opacity(0.14))
-                .frame(width: 176, height: 176)
-
-            DrawableImage(path: state.currentPlant.imagePath, fallbackColor: state.plantColor)
-                .frame(width: 132, height: 132)
-                .scaleEffect(state.showSummaryWater ? 1.10 : 1.0)
-                .animation(.spring(duration: 0.65, bounce: 0.35).delay(0.25), value: state.showSummaryWater)
-
-            if state.showSummaryWater {
-                ForEach(0..<6, id: \.self) { i in
-                    let angle = Double(i) * 60.0 * .pi / 180
-                    let baseX = 78 * cos(angle)
-                    let baseY = 78 * sin(angle)
-                    Image(systemName: "drop.fill")
-                        .font(.title2)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.98),
-                                    Color.cyan.opacity(0.95)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .overlay(
-                            Image(systemName: "drop.fill")
-                                .font(.title2)
-                                .foregroundStyle(Color.white.opacity(0.9))
-                                .blur(radius: 0.2)
-                        )
-                        .shadow(color: .cyan.opacity(0.45), radius: 8, y: 2)
-                        .shadow(color: .white.opacity(0.25), radius: 3, y: 1)
-                        .opacity(animateDrops ? 1.0 : 0.65)
-                        .scaleEffect(animateDrops ? 1.12 : 0.92)
-                        .offset(x: baseX, y: baseY + (animateDrops ? -6 : 6))
-                        .animation(
-                            .easeInOut(duration: 1.1)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(i) * 0.08),
-                            value: animateDrops
-                        )
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 4)
-    }
-
-    private var waterGainLabel: some View {
-        HStack(alignment: .center, spacing: 14) {
+    private var completionHeroCard: some View {
+        VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(Color.cyan.opacity(0.22))
-                    .frame(width: 44, height: 44)
-                Image(systemName: "drop.fill")
-                    .font(.system(size: 18, weight: .bold))
+                    .fill(Color.white.opacity(0.12))
+                    .frame(width: 80, height: 80)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 44, weight: .bold))
                     .foregroundStyle(.white)
+                    .scaleEffect(heroCheckAppear ? 1.0 : 0.5)
+                    .opacity(heroCheckAppear ? 1.0 : 0.0)
+                    .animation(.spring(duration: 0.5, bounce: 0.4).delay(0.15), value: heroCheckAppear)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("+\(Int(state.pendingWaterGain))% 水分")
-                    .font(.system(size: 26, weight: .black))
+            VStack(spacing: 5) {
+                Text("訓練完成")
+                    .font(.system(size: 28, weight: .black))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.cyan.opacity(0.22))
-                    .clipShape(Capsule())
-                Text("累積 \(state.setRecords.count) 組汗水能量")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.75))
+
+                if let name = state.selectedExercise?.name {
+                    Text(name)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.78))
+                        .lineLimit(1)
+                }
             }
 
-            Spacer()
+            HStack(spacing: 14) {
+                HStack(spacing: 5) {
+                    Image(systemName: "flame.fill")
+                        .foregroundStyle(.orange.opacity(0.9))
+                    Text("\(state.setRecords.count) 組完成")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.88))
+                }
+
+                Text("·")
+                    .foregroundStyle(.white.opacity(0.4))
+
+                HStack(spacing: 5) {
+                    Image(systemName: "drop.fill")
+                        .foregroundStyle(.cyan.opacity(0.9))
+                    Text("+\(Int(state.pendingWaterGain))% 澆水")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.88))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.09))
+            .clipShape(Capsule())
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(.white.opacity(0.12))
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 14)
+        .background(Color.white.opacity(0.14))
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .onAppear { heroCheckAppear = true }
+    }
+
+    private var summaryStatsCard: some View {
+        HStack(spacing: 10) {
+            summaryMetricPill(title: "總訓練量", value: String(format: "%.0f kg", totalVolume))
+            summaryMetricPill(title: "最大重量", value: String(format: "%.1f kg", maxWeight))
+            summaryMetricPill(title: "平均次數", value: String(format: "%.1f 下", averageReps))
+        }
+    }
+
+    private func summaryMetricPill(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.62))
+            Text(value)
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 11)
+        .padding(.vertical, 10)
+        .background(Color.white.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private var setLog: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("訓練紀錄")
-                .font(.subheadline.bold())
-                .foregroundStyle(.white.opacity(0.75))
-                .padding(.horizontal, 2)
-
-            VStack(spacing: 10) {
-                ForEach(state.setRecords.indices, id: \.self) { i in
-                    let r = state.setRecords[i]
-                    HStack {
-                        Text("Set \(r.setNumber)")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.white.opacity(0.7))
-                            .frame(width: 58, alignment: .leading)
-                        Spacer()
-                        Text(state.weightText(fromKg: r.weight))
-                            .font(.headline.bold())
-                            .foregroundStyle(.white)
-                        Text("×")
-                            .foregroundStyle(.white.opacity(0.4))
-                        Text("\(r.reps) 下")
-                            .font(.headline.bold())
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(.white.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    isSetLogExpanded.toggle()
                 }
+            } label: {
+                HStack {
+                    Text("訓練紀錄")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.86))
+                    Spacer()
+                    Image(systemName: isSetLogExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .padding(.horizontal, 2)
+            }
+            .buttonStyle(.plain)
+
+            if isSetLogExpanded {
+                VStack(spacing: 10) {
+                    ForEach(state.setRecords.indices, id: \.self) { i in
+                        let r = state.setRecords[i]
+                        let previousWeight = i > 0 ? state.setRecords[i - 1].weight : r.weight
+                        let weightChanged = i > 0 && abs(previousWeight - r.weight) > 0.001
+
+                        HStack {
+                            Text("Set \(r.setNumber)")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.white.opacity(0.7))
+                                .frame(width: 58, alignment: .leading)
+                            Text("\(r.reps) 下")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.white.opacity(0.9))
+                            Spacer()
+                            if weightChanged {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.up.arrow.down.circle.fill")
+                                        .font(.caption.bold())
+                                    Text(state.weightText(fromKg: r.weight))
+                                        .font(.subheadline.bold())
+                                }
+                                .foregroundStyle(Color(red: 0.82, green: 0.92, blue: 0.46))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(Color.white.opacity(0.12))
+                                .clipShape(Capsule())
+                            } else {
+                                Text(state.weightText(fromKg: r.weight))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white.opacity(0.62))
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 11)
+                        .background(.white.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                }
+            } else {
+                Text("點擊展開查看每組紀錄")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.62))
+                    .padding(.horizontal, 2)
             }
         }
+        .padding(14)
+        .background(Color.white.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
+    }
+
+    private var paceTrendCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("每組運動時間")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.white.opacity(0.86))
+                Spacer()
+                if !pacePoints.isEmpty {
+                    let avg = pacePoints.map(\.durationSeconds).reduce(0, +) / Double(pacePoints.count)
+                    let mins = Int(avg) / 60
+                    let secs = Int(avg) % 60
+                    let avgLabel = mins > 0 ? "平均 \(mins)m\(String(format: "%02d", secs))s" : "平均 \(secs)s"
+                    Text(avgLabel)
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.85))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.14))
+                        .clipShape(Capsule())
+                }
+            }
+
+            if pacePoints.count >= 2 {
+                let useSmooth: Bool = pacePoints.count >= 4
+                Chart(pacePoints) { point in
+                    AreaMark(
+                        x: .value("Set", point.setNumber),
+                        y: .value("秒", point.durationSeconds)
+                    )
+                    .interpolationMethod(useSmooth ? .catmullRom : .linear)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.32), Color.white.opacity(0.06), .clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+
+                    LineMark(
+                        x: .value("Set", point.setNumber),
+                        y: .value("秒", point.durationSeconds)
+                    )
+                    .interpolationMethod(useSmooth ? .catmullRom : .linear)
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+
+                    PointMark(
+                        x: .value("Set", point.setNumber),
+                        y: .value("秒", point.durationSeconds)
+                    )
+                    .foregroundStyle(.white)
+                    .symbolSize(44)
+                    .annotation(position: .top, spacing: 6) {
+                        Text(point.label)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks(values: pacePoints.map(\.setNumber)) { value in
+                        AxisValueLabel {
+                            if let v = value.as(Int.self) {
+                                Text("S\(v)")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(Color.white.opacity(0.6))
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { _ in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
+                            .foregroundStyle(Color.white.opacity(0.12))
+                        AxisValueLabel()
+                            .foregroundStyle(Color.white.opacity(0.6))
+                    }
+                }
+                .chartYScale(domain: paceYDomain)
+                .chartXScale(domain: (pacePoints.first?.setNumber ?? 1)...(pacePoints.last?.setNumber ?? 2))
+                .chartPlotStyle { plot in
+                    plot
+                        .background(Color.white.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .frame(height: 150)
+            } else if pacePoints.count == 1 {
+                HStack(spacing: 6) {
+                    Image(systemName: "timer")
+                        .foregroundStyle(.cyan.opacity(0.7))
+                    Text("第 1 組用時 \(pacePoints[0].label)")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.75))
+                }
+                .frame(maxWidth: .infinity, minHeight: 50, alignment: .center)
+            } else {
+                Text("完成訓練後會顯示時間趨勢")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.62))
+                    .frame(maxWidth: .infinity, minHeight: 50, alignment: .center)
+            }
+        }
+        .padding(14)
+        .background(Color.white.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
     }
 
     private var finishButton: some View {
@@ -629,8 +822,8 @@ private struct SummaryView: View {
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(Color(red: 0.25, green: 0.50, blue: 0.60))
+                    .padding(.vertical, 16)
+                    .background(Color(red: 0.19, green: 0.49, blue: 0.59))
                     .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
                     .shadow(color: .black.opacity(0.18), radius: 10, y: 6)
                 }
@@ -641,13 +834,13 @@ private struct SummaryView: View {
                 state.clearActivePlan()
                 state.finishAndGoHome(modelContext: modelContext)
             } label: {
-                Text(state.hasNextPlanItem ? "完成菜單，回到花園" : "灌溉植物，回到花園")
-                    .font(state.hasNextPlanItem ? .subheadline.bold() : .title3.bold())
-                    .foregroundStyle(state.hasNextPlanItem ? .white.opacity(0.7) : .white)
+                Text(state.hasNextPlanItem ? "回到花園" : "回到花園")
+                    .font(state.hasNextPlanItem ? .subheadline.bold() : .headline.bold())
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, state.hasNextPlanItem ? 12 : 18)
+                    .padding(.vertical, 14)
                     .background(Color(red: 0.28, green: 0.55, blue: 0.48)
-                        .opacity(state.hasNextPlanItem ? 0.6 : 1.0))
+                        .opacity(state.hasNextPlanItem ? 0.72 : 1.0))
                     .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
                     .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
             }

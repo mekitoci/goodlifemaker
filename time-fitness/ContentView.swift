@@ -89,7 +89,7 @@ private struct AppSideMenuView: View {
                         DrawableImage(path: "potly-icon", fallbackColor: .white)
                             .frame(width: 32, height: 32)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        Text("Potly - 組間休息計時")
+                        Text("Potly")
                             .font(.headline.bold())
                             .foregroundColor(.white)
                     }
@@ -251,7 +251,7 @@ private struct AchievementsSummaryCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("本週成就概覽")
+            Text("成就概覽")
                 .font(.headline.bold())
                 .foregroundStyle(.white)
 
@@ -427,6 +427,7 @@ struct SettingsView: View {
 
     @State private var notificationsOn: Bool = true
     @State private var soundOn: Bool = true
+    @State private var showAboutAppSheet: Bool = false
 
     private let pageBg = Color(red: 0.44, green: 0.62, blue: 0.58)
     private let surface = Color(red: 0.95, green: 0.97, blue: 0.96)
@@ -521,16 +522,39 @@ struct SettingsView: View {
                         }
 
                         SettingsSectionCard(title: "關於", surface: surface) {
-                            SettingsInfoRow(
-                                icon: "info.circle.fill",
-                                title: "版本",
-                                subtitle: "Potly",
-                                textPrimary: textPrimary,
-                                textSecondary: textSecondary
-                            ) {
-                                Text("1.0.0")
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(textPrimary)
+                            VStack(spacing: 0) {
+                                SettingsInfoRow(
+                                    icon: "info.circle.fill",
+                                    title: "版本",
+                                    subtitle: "Potly",
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary
+                                ) {
+                                    Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(textPrimary)
+                                }
+
+                                Divider()
+                                    .overlay(Color.black.opacity(0.08))
+                                    .padding(.horizontal, 12)
+
+                                Button {
+                                    showAboutAppSheet = true
+                                } label: {
+                                    SettingsInfoRow(
+                                        icon: "hand.raised.fill",
+                                        title: "關於本 App",
+                                        subtitle: "資料與隱私說明",
+                                        textPrimary: textPrimary,
+                                        textSecondary: textSecondary
+                                    ) {
+                                        Image(systemName: "chevron.right")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(textSecondary.opacity(0.8))
+                                    }
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -540,6 +564,194 @@ struct SettingsView: View {
                 }
 
                 Spacer()
+            }
+        }
+        .sheet(isPresented: $showAboutAppSheet) {
+            AboutAppSheet(
+                pageBg: pageBg,
+                surface: surface,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                accent: accent
+            )
+        }
+    }
+}
+
+private struct AboutAppSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    let pageBg: Color
+    let surface: Color
+    let textPrimary: Color
+    let textSecondary: Color
+    let accent: Color
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                pageBg.ignoresSafeArea()
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(accent.opacity(0.22))
+                                    .frame(width: 42, height: 42)
+                                    .overlay(
+                                        Image(systemName: "lock.shield.fill")
+                                            .font(.system(size: 18, weight: .bold))
+                                            .foregroundStyle(accent)
+                                    )
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("資料與隱私")
+                                        .font(.title3.bold())
+                                        .foregroundStyle(.white)
+                                    Text("Potly 的資料只存在你的裝置")
+                                        .font(.caption)
+                                        .foregroundStyle(.white.opacity(0.82))
+                                }
+                                Spacer()
+                            }
+
+                            HStack(spacing: 8) {
+                                aboutTag("本機儲存")
+                                aboutTag("不上傳雲端")
+                            }
+
+                            Text("我們只在本機處理你的訓練資料與 HealthKit 顯示資訊，不會同步或上傳至雲端。")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.9))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 2)
+                        }
+                        .padding(16)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.16), Color.white.opacity(0.08)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            aboutBullet(
+                                icon: "internaldrive.fill",
+                                title: "資料儲存位置",
+                                body: "運動紀錄與設定儲存在本機（SwiftData / UserDefaults），不會同步到雲端伺服器。"
+                            )
+                            aboutBullet(
+                                icon: "heart.text.square.fill",
+                                title: "HealthKit 權限範圍",
+                                body: "若你同意授權，Potly 只讀取「今日步數」與「今日運動次數」用於畫面顯示，不會回寫、不會外傳。"
+                            )
+                            aboutBullet(
+                                icon: "xmark.shield.fill",
+                                title: "我們不會做的事",
+                                body: "不販售、不分享、不追蹤你的個人資料，也不會把資料交給第三方廣告或分析平台。"
+                            )
+                        }
+                        .padding(16)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                        )
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("如有疑問")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.white.opacity(0.92))
+                            Text("若你對資料權限與使用方式有任何疑問，建議先在 iOS 的「設定 > 健康 > 資料存取與裝置」中檢查授權範圍。")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.75))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(12)
+                        .background(Color.white.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        VStack(spacing: 0) {
+                            Button {
+                                if let url = URL(string: "mailto:oouuiicc13@gmail.com") {
+                                    openURL(url)
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "envelope.fill")
+                                    Text("聯絡我")
+                                }
+                                .font(.headline.bold())
+                                .foregroundStyle(Color(red: 0.22, green: 0.42, blue: 0.38))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 13)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(12)
+                        .background(Color(red: 0.30, green: 0.56, blue: 0.52).opacity(0.92))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 22)
+                    .padding(.bottom, 28)
+                }
+            }
+            .navigationTitle("關於本 App")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(pageBg, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("關閉") { dismiss() }
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+    }
+
+    private func aboutTag(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2.bold())
+            .foregroundStyle(.white.opacity(0.92))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(Color.white.opacity(0.16))
+            .clipShape(Capsule())
+    }
+
+    private func aboutBullet(icon: String, title: String, body: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(Color(red: 0.94, green: 0.96, blue: 0.95))
+                .frame(width: 30, height: 30)
+                .overlay(
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Color(red: 0.24, green: 0.62, blue: 0.49))
+                )
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(textPrimary)
+                Text(body)
+                    .font(.caption)
+                    .foregroundStyle(textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -761,7 +973,7 @@ struct WorkoutHistoryView: View {
     private var histChartCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("近 30 天訓練熱力圖")
+                Text("近 30 天")
                     .font(.subheadline.bold())
                     .foregroundStyle(.white.opacity(0.9))
                 Spacer()
@@ -883,26 +1095,6 @@ struct WorkoutHistoryView: View {
                     }
                 }
             }
-
-            Button {
-                guard let image = generateShareImage() else { return }
-                shareImage = image
-                showShareSheet = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.up")
-                    Text("分享圖片")
-                }
-                .font(.subheadline.bold())
-                .foregroundStyle(whCardColor)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
-                .background(whAccentColor)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .disabled(sessions.isEmpty)
-            .opacity(sessions.isEmpty ? 0.5 : 1.0)
         }
     }
 
@@ -934,7 +1126,7 @@ struct WorkoutHistoryView: View {
         let renderer = ImageRenderer(
             content: WorkoutHeatmapShareCard(
                 days: data,
-                todayCalories: state.todayCalories,
+                todayCalories: state.todayTotalCalories,
                 todayWorkoutCount: data.last?.count ?? 0
             )
             .frame(width: 720)
@@ -1013,7 +1205,7 @@ private struct WorkoutHeatmapShareCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("近 30 天訓練熱力圖")
+                    Text("近 30 天")
                         .font(.headline.bold())
                         .foregroundStyle(.white)
 
@@ -1208,7 +1400,8 @@ private struct ExerciseHistoryDetailView: View {
 
     private struct TrendPoint: Identifiable {
         let id: UUID
-        let date: Date
+        let index: Int
+        let dateLabel: String
         let maxWeight: Double
         let volume: Double
         let setCount: Int
@@ -1219,13 +1412,16 @@ private struct ExerciseHistoryDetailView: View {
     }
 
     private var trend: [TrendPoint] {
-        orderedSessions.map {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "M/d"
+        return orderedSessions.enumerated().map { idx, s in
             TrendPoint(
-                id: $0.id,
-                date: $0.date,
-                maxWeight: $0.maxWeight,
-                volume: $0.totalVolume,
-                setCount: $0.sets.count
+                id: s.id,
+                index: idx + 1,
+                dateLabel: fmt.string(from: s.date),
+                maxWeight: s.maxWeight,
+                volume: s.totalVolume,
+                setCount: s.sets.count
             )
         }
     }
@@ -1258,16 +1454,23 @@ private struct ExerciseHistoryDetailView: View {
     }
 
     private var yDomain: ClosedRange<Double> {
-        guard let minValue = trend.map(\.maxWeight).min(),
-              let maxValue = trend.map(\.maxWeight).max() else {
-            return 0...100
+        let weights = trend.map(\.maxWeight).sorted()
+        guard weights.count >= 2 else {
+            let v = weights.first ?? 50
+            return max(0, v - 10)...(v + 10)
         }
-        if minValue == maxValue {
-            let padding = max(5, maxValue * 0.15)
-            return max(0, minValue - padding)...(maxValue + padding)
-        }
-        let padding = max(2, (maxValue - minValue) * 0.2)
-        return max(0, minValue - padding)...(maxValue + padding)
+        let q1Idx = weights.count / 4
+        let q3Idx = (weights.count * 3) / 4
+        let q1 = weights[q1Idx]
+        let q3 = weights[q3Idx]
+        let iqr = q3 - q1
+        let fence = max(iqr * 1.5, 5.0)
+        let lo = max(0, q1 - fence)
+        let hi = q3 + fence
+        let clampedMin = weights.filter { $0 >= lo }.min() ?? lo
+        let clampedMax = weights.filter { $0 <= hi }.max() ?? hi
+        let padding = max(3, (clampedMax - clampedMin) * 0.18)
+        return max(0, clampedMin - padding)...(clampedMax + padding)
     }
 
     var body: some View {
@@ -1336,9 +1539,11 @@ private struct ExerciseHistoryDetailView: View {
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
                 Chart(trend) { point in
+                    let clamped = min(max(point.maxWeight, yDomain.lowerBound), yDomain.upperBound)
+
                     AreaMark(
-                        x: .value("日期", point.date),
-                        y: .value("重量", point.maxWeight)
+                        x: .value("次", point.index),
+                        y: .value("重量", clamped)
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(
@@ -1354,31 +1559,37 @@ private struct ExerciseHistoryDetailView: View {
                     )
 
                     LineMark(
-                        x: .value("日期", point.date),
-                        y: .value("重量", point.maxWeight)
+                        x: .value("次", point.index),
+                        y: .value("重量", clamped)
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(whAccentColor)
                     .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
 
                     PointMark(
-                        x: .value("日期", point.date),
-                        y: .value("重量", point.maxWeight)
+                        x: .value("次", point.index),
+                        y: .value("重量", clamped)
                     )
                     .foregroundStyle(.white)
                     .symbolSize(46)
+                    .annotation(position: .top, spacing: 4) {
+                        Text(point.dateLabel)
+                            .font(.system(size: 8))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
                 }
                 .chartYScale(domain: yDomain)
+                .chartXScale(domain: 1...(max(2, trend.count)))
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                    AxisMarks(values: .automatic(desiredCount: min(trend.count, 6))) { _ in
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
                             .foregroundStyle(Color.white.opacity(0.12))
-                        AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+                        AxisValueLabel()
                             .foregroundStyle(Color.white.opacity(0.65))
                     }
                 }
                 .chartYAxis {
-                    AxisMarks(position: .leading) { _ in
+                    AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
                         AxisGridLine(stroke: StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
                             .foregroundStyle(Color.white.opacity(0.12))
                         AxisValueLabel()
@@ -1399,14 +1610,15 @@ private struct ExerciseHistoryDetailView: View {
     }
 
     private var recentRecordsCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let recent: [TrendPoint] = Array(trend.suffix(8).reversed())
+        return VStack(alignment: .leading, spacing: 10) {
             Text("近期紀錄")
                 .font(.subheadline.bold())
                 .foregroundStyle(.white.opacity(0.9))
 
-            ForEach(Array(trend.reversed().prefix(8))) { item in
+            ForEach(recent) { item in
                 HStack(spacing: 10) {
-                    Text(dateText(item.date))
+                    Text(item.dateLabel)
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.65))
                         .frame(width: 72, alignment: .leading)

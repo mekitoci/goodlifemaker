@@ -158,11 +158,7 @@ private struct PlantDetailSheet: View {
     @Environment(AppState.self) private var state
 
     private var statusText: String {
-        if !state.isPlantUnlocked(plant.id) { return "尚未解鎖" }
-        if !state.hasSelectedPlant { return "可開始栽培" }
-        if state.mustSwitchPot, plant.id == state.selectedPlantID { return "已完成，請改選其他盆栽" }
-        if state.hasSelectedPlant, !state.mustSwitchPot, state.selectedPlantID != plant.id { return "目前不可切換" }
-        return "可開始栽培"
+        state.plantSelectHint(for: plant)
     }
     
     var body: some View {
@@ -227,15 +223,6 @@ private struct PlantDetailSheet: View {
                         tint: state.isPlantUnlocked(plant.id)
                             ? Color(red: 0.23, green: 0.67, blue: 0.47)
                             : Color.gray
-                    )
-
-                    simpleRow(
-                        icon: "exclamationmark.circle.fill",
-                        title: "目前狀態",
-                        value: statusText,
-                        tint: state.canChoosePlant(plant)
-                            ? Color(red: 0.23, green: 0.67, blue: 0.47)
-                            : Color.orange.opacity(0.9)
                     )
                 }
                 .padding(14)

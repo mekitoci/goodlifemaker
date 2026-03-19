@@ -33,9 +33,10 @@ extension UIImage {
         if let path = Bundle.main.path(forResource: name, ofType: "png"),
            let img = UIImage(contentsOfFile: path) { return img }
 
+        #if DEBUG
         for base in [
-            "/Users/yang/.cursor/worktrees/time-fitness/qur",
-            "/Users/yang/code/time-fitness"
+            Bundle.main.bundlePath,
+            NSHomeDirectory()
         ] {
             for candidate in [
                 "\(base)/\(sanitized).png",
@@ -45,6 +46,7 @@ extension UIImage {
                 if let img = UIImage(contentsOfFile: candidate) { return img }
             }
         }
+        #endif
         return nil
     }
 

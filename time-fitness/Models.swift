@@ -25,6 +25,12 @@ struct SetRecord {
     let setNumber: Int
     let reps: Int
     let weight: Double
+    let startedAt: Date
+    let completedAt: Date = .now
+
+    var exerciseDuration: TimeInterval {
+        completedAt.timeIntervalSince(startedAt)
+    }
 }
 
 // MARK: - Units
@@ -49,6 +55,12 @@ struct PlantCatalogEntry: Identifiable {
         id: 0, name: "綠蘿", englishName: "Epipremnum aureum",
         quote: "持續訓練，慢慢成長", unlockTarget: 5,
         imagePath: "drawable/home_plant1", lockImagePath: "drawable/home_plant1_lock"
+    )
+
+    static let unselected = PlantCatalogEntry(
+        id: 0, name: "尚未選擇花盆", englishName: "No pot selected",
+        quote: "先前往花園選擇今天要栽培的花盆", unlockTarget: 0,
+        imagePath: "drawable/task", lockImagePath: "drawable/task"
     )
 }
 

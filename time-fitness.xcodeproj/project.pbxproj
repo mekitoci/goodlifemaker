@@ -25,6 +25,10 @@
 		2F509B162F69E5AF00750521 /* RestTimerWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2F509B042F69E5AD00750521 /* RestTimerWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2F509B1D2F69E8D400750521 /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */; };
 		2F509B1E2F69E91800750521 /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */; };
+		2F509B232F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2F509B222F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist */; };
+		2F509B282F6C4DF900750521 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 2F509B272F6C4DF900750521 /* GoogleSignIn */; };
+		2F509B2A2F6C4E2500750521 /* GoogleAPIClientForREST_Drive in Frameworks */ = {isa = PBXBuildFile; productRef = 2F509B292F6C4E2500750521 /* GoogleAPIClientForREST_Drive */; };
+		2F509B2C2F6C4EAB00750521 /* GoogleAPIClientForRESTCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2F509B2B2F6C4EAB00750521 /* GoogleAPIClientForRESTCore */; };
 		AA100001FFFFFFFF00000001 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000001 /* AppState.swift */; };
 		AA100001FFFFFFFF00000002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000002 /* Models.swift */; };
 		AA100001FFFFFFFF00000003 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000003 /* Extensions.swift */; };
@@ -32,6 +36,7 @@
 		AA100001FFFFFFFF00000005 /* DictionaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000005 /* DictionaryView.swift */; };
 		AA100001FFFFFFFF00000006 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000006 /* WorkoutView.swift */; };
 		AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000007 /* GardenView.swift */; };
+		AA100001FFFFFFFF00000008 /* CloudSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000008 /* CloudSyncView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -95,6 +100,8 @@
 		2F509B132F69E5AF00750521 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RestTimerAttributes.swift; sourceTree = "<group>"; };
 		2F509B1F2F6B053E00750521 /* time-fitness.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "time-fitness.entitlements"; sourceTree = "<group>"; };
+		2F509B222F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist"; sourceTree = "<group>"; };
+		2F509B242F6C4A2600750521 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000001 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000003 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
@@ -102,6 +109,7 @@
 		AA200001FFFFFFFF00000005 /* DictionaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryView.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000006 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000007 /* GardenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GardenView.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000008 /* CloudSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,6 +117,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2F509B2A2F6C4E2500750521 /* GoogleAPIClientForREST_Drive in Frameworks */,
+				2F509B2C2F6C4EAB00750521 /* GoogleAPIClientForRESTCore in Frameworks */,
+				2F509B282F6C4DF900750521 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -164,6 +175,8 @@
 		2F509AD02F658D8900750521 /* time-fitness */ = {
 			isa = PBXGroup;
 			children = (
+				2F509B242F6C4A2600750521 /* Info.plist */,
+				2F509B222F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist */,
 				2F509B1F2F6B053E00750521 /* time-fitness.entitlements */,
 				2F509AD12F658D8900750521 /* time_fitnessApp.swift */,
 				2F509AD32F658D8900750521 /* ContentView.swift */,
@@ -177,6 +190,7 @@
 				AA200001FFFFFFFF00000005 /* DictionaryView.swift */,
 				AA200001FFFFFFFF00000006 /* WorkoutView.swift */,
 				AA200001FFFFFFFF00000007 /* GardenView.swift */,
+				AA200001FFFFFFFF00000008 /* CloudSyncView.swift */,
 				2F509AD72F658D8B00750521 /* Preview Content */,
 			);
 			path = "time-fitness";
@@ -247,6 +261,11 @@
 				2F509B152F69E5AF00750521 /* PBXTargetDependency */,
 			);
 			name = "time-fitness";
+			packageProductDependencies = (
+				2F509B272F6C4DF900750521 /* GoogleSignIn */,
+				2F509B292F6C4E2500750521 /* GoogleAPIClientForREST_Drive */,
+				2F509B2B2F6C4EAB00750521 /* GoogleAPIClientForRESTCore */,
+			);
 			productName = "time-fitness";
 			productReference = 2F509ACE2F658D8900750521 /* time-fitness.app */;
 			productType = "com.apple.product-type.application";
@@ -339,6 +358,10 @@
 				Base,
 			);
 			mainGroup = 2F509AC52F658D8900750521;
+			packageReferences = (
+				2F509B252F6C4D5400750521 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				2F509B262F6C4DAE00750521 /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */,
+			);
 			productRefGroup = 2F509ACF2F658D8900750521 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -357,6 +380,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2F509AD92F658D8B00750521 /* Preview Assets.xcassets in Resources */,
+				2F509B232F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist in Resources */,
 				2F509AD62F658D8B00750521 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -402,6 +426,7 @@
 				AA100001FFFFFFFF00000005 /* DictionaryView.swift in Sources */,
 				AA100001FFFFFFFF00000006 /* WorkoutView.swift in Sources */,
 				AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */,
+				AA100001FFFFFFFF00000008 /* CloudSyncView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -586,8 +611,9 @@
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleName = Potly;
+				INFOPLIST_FILE = "time-fitness/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Potly;
+				INFOPLIST_KEY_CFBundleName = Potly;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Potly 會讀取您的今日步數與運動紀錄，用於首頁顯示活動統計。資料僅在本機使用，不會上傳。";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -600,7 +626,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potly";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potly;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -621,9 +647,10 @@
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleName = Potly;
+				INFOPLIST_FILE = "time-fitness/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Potly;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Potly \u6703\u8b80\u53d6\u60a8\u7684\u4eca\u65e5\u6b65\u6578\u8207\u904b\u52d5\u7d00\u9304\uff0c\u7528\u65bc\u9996\u9801\u986f\u793a\u6d3b\u52d5\u7d71\u8a08\u3002\u8cc7\u6599\u50c5\u5728\u672c\u6a5f\u4f7f\u7528\uff0c\u4e0d\u6703\u4e0a\u50b3\u3002";
+				INFOPLIST_KEY_CFBundleName = Potly;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Potly 會讀取您的今日步數與運動紀錄，用於首頁顯示活動統計。資料僅在本機使用，不會上傳。";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -635,7 +662,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potly";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potly;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -654,7 +681,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potlyTests";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potlyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -674,7 +701,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potlyTests";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potlyTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -692,7 +719,7 @@
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potlyUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potlyUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -710,7 +737,7 @@
 				DEVELOPMENT_TEAM = 23MWC59SYK;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potlyUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potlyUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -737,7 +764,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potly.RestTimerWidgetExtension";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potly.RestTimerWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -764,7 +791,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "junchen.potly.RestTimerWidgetExtension";
+				PRODUCT_BUNDLE_IDENTIFIER = junchen.potly.RestTimerWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -822,6 +849,43 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2F509B252F6C4D5400750521 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
+		2F509B262F6C4DAE00750521 /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/google-api-objectivec-client-for-rest";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2F509B272F6C4DF900750521 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F509B252F6C4D5400750521 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		2F509B292F6C4E2500750521 /* GoogleAPIClientForREST_Drive */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F509B262F6C4DAE00750521 /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */;
+			productName = GoogleAPIClientForREST_Drive;
+		};
+		2F509B2B2F6C4EAB00750521 /* GoogleAPIClientForRESTCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2F509B262F6C4DAE00750521 /* XCRemoteSwiftPackageReference "google-api-objectivec-client-for-rest" */;
+			productName = GoogleAPIClientForRESTCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */
 		2F509ADC2F658D8B00750521 /* time_fitness.xcdatamodeld */ = {

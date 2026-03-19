@@ -428,6 +428,7 @@ struct SettingsView: View {
     @State private var notificationsOn: Bool = true
     @State private var soundOn: Bool = true
     @State private var showAboutAppSheet: Bool = false
+    @State private var showCloudSyncSheet: Bool = false
 
     private let pageBg = Color(red: 0.44, green: 0.62, blue: 0.58)
     private let surface = Color(red: 0.95, green: 0.97, blue: 0.96)
@@ -521,6 +522,31 @@ struct SettingsView: View {
                             }
                         }
 
+                        SettingsSectionCard(title: "雲端同步", surface: surface) {
+                            VStack(spacing: 0) {
+                                Button {
+                                    showCloudSyncSheet = true
+                                } label: {
+                                    SettingsInfoRow(
+                                        icon: "icloud.and.arrow.up.fill",
+                                        title: "Google Drive",
+                                        subtitle: "登入 Google 並管理 Drive 同步",
+                                        textPrimary: textPrimary,
+                                        textSecondary: textSecondary
+                                    ) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "cloud.fill")
+                                                .font(.subheadline.bold())
+                                            Image(systemName: "chevron.right")
+                                                .font(.caption.bold())
+                                        }
+                                        .foregroundStyle(textSecondary.opacity(0.85))
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+
                         SettingsSectionCard(title: "關於", surface: surface) {
                             VStack(spacing: 0) {
                                 SettingsInfoRow(
@@ -575,6 +601,15 @@ struct SettingsView: View {
                 accent: accent
             )
         }
+        .sheet(isPresented: $showCloudSyncSheet) {
+            CloudSyncSheet(
+                pageBg: pageBg,
+                surface: surface,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                accent: accent
+            )
+        }
     }
 }
 
@@ -616,10 +651,10 @@ private struct AboutAppSheet: View {
 
                             HStack(spacing: 8) {
                                 aboutTag("本機儲存")
-                                aboutTag("不上傳雲端")
+                                aboutTag("不追蹤")
                             }
 
-                            Text("我們只在本機處理你的訓練資料與 HealthKit 顯示資訊，不會同步或上傳至雲端。")
+                            Text("我們在本機處理你的訓練資料與 HealthKit 顯示資訊，不會在你未同意下自動上傳雲端。")
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.9))
                                 .fixedSize(horizontal: false, vertical: true)
@@ -643,17 +678,17 @@ private struct AboutAppSheet: View {
                             aboutBullet(
                                 icon: "internaldrive.fill",
                                 title: "資料儲存位置",
-                                body: "運動紀錄與設定儲存在本機（SwiftData / UserDefaults），不會同步到雲端伺服器。"
+                                body: "運動紀錄與設定儲存在本機（SwiftData / UserDefaults）。"
                             )
                             aboutBullet(
                                 icon: "heart.text.square.fill",
                                 title: "HealthKit 權限範圍",
-                                body: "若你同意授權，Potly 只讀取「今日步數」與「今日運動次數」用於畫面顯示，不會回寫、不會外傳。"
+                                body: "Potly 只讀取「今日步數」與「今日運動次數」用於畫面顯示，不會回寫。"
                             )
                             aboutBullet(
                                 icon: "xmark.shield.fill",
                                 title: "我們不會做的事",
-                                body: "不販售、不分享、不追蹤你的個人資料，也不會把資料交給第三方廣告或分析平台。"
+                                body: "不販售、不分享、不追蹤你的個人資料。"
                             )
                         }
                         .padding(16)
@@ -668,7 +703,7 @@ private struct AboutAppSheet: View {
                             Text("如有疑問")
                                 .font(.subheadline.bold())
                                 .foregroundStyle(.white.opacity(0.92))
-                            Text("若你對資料權限與使用方式有任何疑問，建議先在 iOS 的「設定 > 健康 > 資料存取與裝置」中檢查授權範圍。")
+                            Text("你可以在「設定 > 雲端同步」管理 Google Drive 匯出與還原。")
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.75))
                                 .fixedSize(horizontal: false, vertical: true)
@@ -743,7 +778,6 @@ private struct AboutAppSheet: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Color(red: 0.24, green: 0.62, blue: 0.49))
                 )
-
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .font(.subheadline.bold())

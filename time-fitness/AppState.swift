@@ -48,6 +48,32 @@ struct AchievementProgressItem: Identifiable {
 
 @Observable
 final class AppState {
+    struct LocalBackupSnapshot: Codable {
+        var exercises: [Exercise]
+        var workoutPlans: [WorkoutPlan]
+        var selectedPlantID: Int
+        var hasSelectedPlant: Bool
+        var plantHydration: Double
+        var mustSwitchPot: Bool
+        var plantCompletionCounts: [Int: Int]
+        var plantingRecords: [PlantingRecord]
+        var lastPotRewardMessage: String
+        var totalSetsCompleted: Int
+        var lastWorkoutTimestamp: Double
+        var todayCalories: Double
+        var todayCaloriesDate: Double
+        var lifetimeCalories: Double
+        var todaySets: Int
+        var todaySetsDate: Double
+        var workoutStreak: Int
+        var lastStreakTimestamp: Double
+        var lastExerciseName: String
+        var lastWeight: Double
+        var lastReps: Int
+        var weightUnitRaw: String
+        var healthKitRequested: Bool
+    }
+
     private static let healthKitRequestedKey = "healthkit_requested_v1"
     private let healthStore = HKHealthStore()
     private var healthKitRequested: Bool = UserDefaults.standard.bool(forKey: AppState.healthKitRequestedKey) {
@@ -55,6 +81,60 @@ final class AppState {
     }
     private var lastHealthKitRefreshAt: Date = .distantPast
     private var lastHealthKitMinuteStamp: Int = -1
+
+    func makeLocalBackupSnapshot() -> LocalBackupSnapshot {
+        LocalBackupSnapshot(
+            exercises: exercises,
+            workoutPlans: workoutPlans,
+            selectedPlantID: selectedPlantID,
+            hasSelectedPlant: hasSelectedPlant,
+            plantHydration: plantHydration,
+            mustSwitchPot: mustSwitchPot,
+            plantCompletionCounts: plantCompletionCounts,
+            plantingRecords: plantingRecords,
+            lastPotRewardMessage: lastPotRewardMessage,
+            totalSetsCompleted: totalSetsCompleted,
+            lastWorkoutTimestamp: lastWorkoutTimestamp,
+            todayCalories: todayCalories,
+            todayCaloriesDate: UserDefaults.standard.double(forKey: "todayCaloriesDate"),
+            lifetimeCalories: lifetimeCalories,
+            todaySets: todaySets,
+            todaySetsDate: UserDefaults.standard.double(forKey: "todaySetsDate"),
+            workoutStreak: workoutStreak,
+            lastStreakTimestamp: lastStreakTimestamp,
+            lastExerciseName: lastExerciseName,
+            lastWeight: lastWeight,
+            lastReps: lastReps,
+            weightUnitRaw: weightUnitRaw,
+            healthKitRequested: healthKitRequested
+        )
+    }
+
+    func applyLocalBackupSnapshot(_ snapshot: LocalBackupSnapshot) {
+        exercises = snapshot.exercises
+        workoutPlans = snapshot.workoutPlans
+        selectedPlantID = snapshot.selectedPlantID
+        hasSelectedPlant = snapshot.hasSelectedPlant
+        plantHydration = snapshot.plantHydration
+        mustSwitchPot = snapshot.mustSwitchPot
+        plantCompletionCounts = snapshot.plantCompletionCounts
+        plantingRecords = snapshot.plantingRecords
+        lastPotRewardMessage = snapshot.lastPotRewardMessage
+        totalSetsCompleted = snapshot.totalSetsCompleted
+        lastWorkoutTimestamp = snapshot.lastWorkoutTimestamp
+        todayCalories = snapshot.todayCalories
+        UserDefaults.standard.set(snapshot.todayCaloriesDate, forKey: "todayCaloriesDate")
+        lifetimeCalories = snapshot.lifetimeCalories
+        todaySets = snapshot.todaySets
+        UserDefaults.standard.set(snapshot.todaySetsDate, forKey: "todaySetsDate")
+        workoutStreak = snapshot.workoutStreak
+        lastStreakTimestamp = snapshot.lastStreakTimestamp
+        lastExerciseName = snapshot.lastExerciseName
+        lastWeight = snapshot.lastWeight
+        lastReps = snapshot.lastReps
+        weightUnitRaw = snapshot.weightUnitRaw
+        healthKitRequested = snapshot.healthKitRequested
+    }
 
     // MARK: - Exercise catalog（支援 CRUD，UserDefaults 持久化）
 

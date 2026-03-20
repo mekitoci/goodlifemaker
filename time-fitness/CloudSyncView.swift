@@ -96,39 +96,167 @@ struct CloudSyncSheet: View {
         )
     }
 
-    private func restore(from payload: AppBackupPayload) throws {
-        state.applyLocalBackupSnapshot(payload.appState)
-        for s in workoutSessions {
-            modelContext.delete(s)
-        }
-        for s in payload.workouts {
-            let session = WorkoutSession(
-                exerciseName: s.exerciseName,
-                muscleGroup: s.muscleGroup,
-                date: s.date,
-                totalSets: s.totalSets,
-                notes: s.notes
-            )
-            session.id = s.id
-            session.supabaseID = s.supabaseID
-            session.syncedAt = s.syncedAt
-            session.isDirty = s.isDirty
-            modelContext.insert(session)
+    private func merge(from payload: AppBackupPayload) throws {
+        // 1) Merge UserDefaults-backed app state (non-destructive)
+        let remote = payload.appState
 
-            for item in s.sets {
-                let set = WorkoutSet(
-                    setNumber: item.setNumber,
-                    reps: item.reps,
-                    weightKg: item.weightKg,
-                    completedAt: item.completedAt
-                )
-                set.id = item.id
-                set.supabaseID = item.supabaseID
-                set.session = session
-                modelContext.insert(set)
-                session.sets.append(set)
+        // Exercises: merge by id, fallback by group+name
+        var mergedExercises = state.exercises
+        for ex in remote.exercises {
+            if let idx = mergedExercises.firstIndex(where: { $0.id == ex.id }) {
+                mergedExercises[idx] = ex
+                continue
+            }
+            let sameName = mergedExercises.contains {
+                $0.muscleGroup == ex.muscleGroup &&
+                $0.name.compare(ex.name, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
+            }
+            if !sameName { mergedExercises.append(ex) }
+        }
+        state.exercises = mergedExercises
+
+        // Workout plans: merge by id
+        var mergedPlans = state.workoutPlans
+        for plan in remote.workoutPlans {
+            if let idx = mergedPlans.firstIndex(where: { $0.id == plan.id }) {
+                mergedPlans[idx] = plan
+            } else {
+                mergedPlans.append(plan)
             }
         }
+        state.workoutPlans = mergedPlans
+
+        state.hasSelectedPlant = state.hasSelectedPlant || remote.hasSelectedPlant
+        if !state.hasSelectedPlant, remote.hasSelectedPlant {
+            state.selectedPlantID = remote.selectedPlantID
+        }
+        state.plantHydration = max(state.plantHydration, remote.plantHydration)
+        state.mustSwitchPot = state.mustSwitchPot || remote.mustSwitchPot
+
+        var mergedPlantCounts = state.plantCompletionCounts
+        for (plantID, count) in remote.plantCompletionCounts {
+            mergedPlantCounts[plantID] = max(mergedPlantCounts[plantID] ?? 0, count)
+        }
+        state.plantCompletionCounts = mergedPlantCounts
+
+        var plantingMap = Dictionary(uniqueKeysWithValues: state.plantingRecords.map { ($0.id, $0) })
+        for rec in remote.plantingRecords where plantingMap[rec.id] == nil {
+            plantingMap[rec.id] = rec
+        }
+        state.plantingRecords = plantingMap.values.sorted(by: { $0.completedAt > $1.completedAt })
+
+        if state.lastPotRewardMessage.isEmpty {
+            state.lastPotRewardMessage = remote.lastPotRewardMessage
+        }
+        state.totalSetsCompleted = max(state.totalSetsCompleted, remote.totalSetsCompleted)
+        state.lastWorkoutTimestamp = max(state.lastWorkoutTimestamp, remote.lastWorkoutTimestamp)
+        state.todayCalories = max(state.todayCalories, remote.todayCalories)
+        state.lifetimeCalories = max(state.lifetimeCalories, remote.lifetimeCalories)
+        state.todaySets = max(state.todaySets, remote.todaySets)
+        state.workoutStreak = max(state.workoutStreak, remote.workoutStreak)
+
+        if state.lastExerciseName.isEmpty {
+            state.lastExerciseName = remote.lastExerciseName
+        }
+        if state.lastWeight <= 0 {
+            state.lastWeight = remote.lastWeight
+        }
+        state.lastReps = max(state.lastReps, remote.lastReps)
+
+        var mergedDiet = state.dietStatusByDate
+        for (key, value) in remote.dietStatusByDate where mergedDiet[key] == nil {
+            mergedDiet[key] = value
+        }
+        state.dietStatusByDate = mergedDiet
+
+        let cal = Calendar.current
+        var weightByDay: [Date: WeightLogEntry] = [:]
+        for item in state.weightLogs {
+            let day = cal.startOfDay(for: item.date)
+            weightByDay[day] = item
+        }
+        for item in remote.weightLogs {
+            let day = cal.startOfDay(for: item.date)
+            if weightByDay[day] == nil { weightByDay[day] = item }
+        }
+        state.weightLogs = weightByDay.values.sorted(by: { $0.date < $1.date })
+
+        // 2) Merge SwiftData workout sessions (non-destructive)
+        var existingByID = Dictionary(uniqueKeysWithValues: workoutSessions.map { ($0.id, $0) })
+
+        for s in payload.workouts {
+            if let existing = existingByID[s.id] {
+                existing.exerciseName = s.exerciseName
+                existing.muscleGroup = s.muscleGroup
+                existing.date = s.date
+                existing.totalSets = max(existing.totalSets, s.totalSets)
+                if existing.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    existing.notes = s.notes
+                }
+                if existing.supabaseID == nil { existing.supabaseID = s.supabaseID }
+                if let remoteSync = s.syncedAt {
+                    if let localSync = existing.syncedAt {
+                        existing.syncedAt = max(localSync, remoteSync)
+                    } else {
+                        existing.syncedAt = remoteSync
+                    }
+                }
+                existing.isDirty = existing.isDirty || s.isDirty
+
+                var existingSetsByID = Dictionary(uniqueKeysWithValues: existing.sets.map { ($0.id, $0) })
+                for item in s.sets {
+                    if let localSet = existingSetsByID[item.id] {
+                        localSet.setNumber = item.setNumber
+                        localSet.reps = item.reps
+                        localSet.weightKg = item.weightKg
+                        localSet.completedAt = item.completedAt
+                        if localSet.supabaseID == nil { localSet.supabaseID = item.supabaseID }
+                    } else {
+                        let set = WorkoutSet(
+                            setNumber: item.setNumber,
+                            reps: item.reps,
+                            weightKg: item.weightKg,
+                            completedAt: item.completedAt
+                        )
+                        set.id = item.id
+                        set.supabaseID = item.supabaseID
+                        set.session = existing
+                        modelContext.insert(set)
+                        existing.sets.append(set)
+                        existingSetsByID[set.id] = set
+                    }
+                }
+            } else {
+                let session = WorkoutSession(
+                    exerciseName: s.exerciseName,
+                    muscleGroup: s.muscleGroup,
+                    date: s.date,
+                    totalSets: s.totalSets,
+                    notes: s.notes
+                )
+                session.id = s.id
+                session.supabaseID = s.supabaseID
+                session.syncedAt = s.syncedAt
+                session.isDirty = s.isDirty
+                modelContext.insert(session)
+                existingByID[session.id] = session
+
+                for item in s.sets {
+                    let set = WorkoutSet(
+                        setNumber: item.setNumber,
+                        reps: item.reps,
+                        weightKg: item.weightKg,
+                        completedAt: item.completedAt
+                    )
+                    set.id = item.id
+                    set.supabaseID = item.supabaseID
+                    set.session = session
+                    modelContext.insert(set)
+                    session.sets.append(set)
+                }
+            }
+        }
+
         try modelContext.save()
     }
 
@@ -185,10 +313,20 @@ struct CloudSyncSheet: View {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let payload = try decoder.decode(AppBackupPayload.self, from: data)
-            try restore(from: payload)
-            setStatus("匯入完成：已覆蓋本機資料。")
+            try merge(from: payload)
+            setStatus("匯入完成：已與本機資料合併。")
         } catch {
             setStatus("下載/匯入失敗：\(error.localizedDescription)", error: true)
+        }
+    }
+
+    private func refreshGoogleSignInStateOnAppear() async {
+        let restored = await service.restoreConnectionIfPossible()
+        googleDriveConnected = restored
+        if restored {
+            setStatus("已恢復 Google 登入狀態")
+        } else {
+            setStatus("尚未連線 Google Drive")
         }
     }
 
@@ -206,43 +344,60 @@ struct CloudSyncSheet: View {
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.86))
                                 .fixedSize(horizontal: false, vertical: true)
-                            HStack(spacing: 8) {
-                                Image(systemName: googleDriveConnected ? "checkmark.seal.fill" : "xmark.seal.fill")
-                                    .foregroundStyle(googleDriveConnected ? Color.green : Color.orange)
-                                Text(googleDriveConnected ? "已連線 Google Drive" : "尚未連線 Google Drive")
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(textPrimary)
-                                Spacer()
-                            }
-                            .padding(12)
-                            .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                             Button {
+                                guard !googleDriveConnected else { return }
                                 Task { await connectGoogleDrive() }
                             } label: {
-                                Label("Google 登入", systemImage: "person.crop.circle.badge.checkmark")
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color(red: 0.22, green: 0.42, blue: 0.38))
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                HStack(spacing: 10) {
+                                    Image(systemName: googleDriveConnected ? "checkmark.circle.fill" : "person.crop.circle.badge.checkmark")
+                                        .font(.headline)
+                                    Text(googleDriveConnected ? "已連線 Google Drive" : "Google 登入")
+                                        .font(.subheadline.bold())
+                                    Spacer()
+                                    if !googleDriveConnected {
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption.bold())
+                                    }
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 12)
+                                .background(
+                                    LinearGradient(
+                                        colors: googleDriveConnected
+                                            ? [Color(red: 0.21, green: 0.58, blue: 0.43), Color(red: 0.18, green: 0.52, blue: 0.38)]
+                                            : [Color(red: 0.16, green: 0.42, blue: 0.43), Color(red: 0.13, green: 0.36, blue: 0.36)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                                )
                             }
                             .buttonStyle(.plain)
-                            .disabled(isWorking)
+                            .disabled(isWorking || googleDriveConnected)
+                            .opacity((isWorking || googleDriveConnected) ? 0.78 : 1)
                         }
                         .padding(14)
-                        .background(Color.white.opacity(0.12))
+                        .background(Color.white.opacity(0.10))
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
 
                         VStack(spacing: 10) {
                             Button {
                                 Task { await uploadToDrive() }
                             } label: {
                                 Label("匯出全部資料到 Google Drive", systemImage: "arrow.up.doc.fill")
-                                    .font(.headline.bold())
-                                    .foregroundStyle(Color(red: 0.22, green: 0.42, blue: 0.38))
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(Color(red: 0.20, green: 0.40, blue: 0.36))
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
                                     .background(Color.white)
@@ -255,11 +410,17 @@ struct CloudSyncSheet: View {
                                 Task { await restoreFromDrive() }
                             } label: {
                                 Label("從 Google Drive 下載並還原", systemImage: "arrow.down.doc.fill")
-                                    .font(.headline.bold())
+                                    .font(.subheadline.bold())
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
-                                    .background(accent)
+                                    .background(
+                                        LinearGradient(
+                                            colors: [Color(red: 0.36, green: 0.47, blue: 0.88), Color(red: 0.28, green: 0.36, blue: 0.74)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                             .buttonStyle(.plain)
@@ -267,11 +428,11 @@ struct CloudSyncSheet: View {
                             .opacity(googleDriveConnected ? 1 : 0.55)
                         }
                         .padding(12)
-                        .background(Color(red: 0.30, green: 0.56, blue: 0.52).opacity(0.94))
+                        .background(Color(red: 0.23, green: 0.49, blue: 0.47).opacity(0.94))
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
                         )
 
                         HStack(alignment: .top, spacing: 8) {
@@ -289,7 +450,7 @@ struct CloudSyncSheet: View {
                             Spacer()
                         }
                         .padding(12)
-                        .background(Color.white.opacity(0.12))
+                        .background(Color.white.opacity(0.10))
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .padding(.horizontal, 20)
@@ -308,6 +469,9 @@ struct CloudSyncSheet: View {
                         .foregroundStyle(.white)
                 }
             }
+        }
+        .task {
+            await refreshGoogleSignInStateOnAppear()
         }
     }
 }
@@ -341,6 +505,13 @@ private final class GoogleDriveService {
 #if canImport(GoogleSignIn) && canImport(GoogleAPIClientForREST_Drive)
     private let driveService = GTLRDriveService()
 
+    private func ensureSignInConfiguration() -> Bool {
+        if GIDSignIn.sharedInstance.configuration != nil { return true }
+        guard let clientID = resolvedGoogleClientID() else { return false }
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        return true
+    }
+
     private func resolvedGoogleClientID() -> String? {
         if let raw = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") {
             let value = (raw as? String) ?? String(describing: raw)
@@ -366,11 +537,8 @@ private final class GoogleDriveService {
     }
 
     private func signInAndAuthorize() async throws -> GIDGoogleUser {
-        if GIDSignIn.sharedInstance.configuration == nil {
-            guard let clientID = resolvedGoogleClientID() else {
-                throw DriveError.notConfigured
-            }
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        if !ensureSignInConfiguration() {
+            throw DriveError.notConfigured
         }
 
         if let existing = GIDSignIn.sharedInstance.currentUser {
@@ -399,6 +567,26 @@ private final class GoogleDriveService {
                 }
                 self.driveService.authorizer = user.fetcherAuthorizer
                 continuation.resume(returning: user)
+            }
+        }
+    }
+
+    func restoreConnectionIfPossible() async -> Bool {
+        guard ensureSignInConfiguration() else { return false }
+
+        if let existing = GIDSignIn.sharedInstance.currentUser {
+            driveService.authorizer = existing.fetcherAuthorizer
+            return true
+        }
+
+        return await withCheckedContinuation { continuation in
+            GIDSignIn.sharedInstance.restorePreviousSignIn { user, _ in
+                guard let user else {
+                    continuation.resume(returning: false)
+                    return
+                }
+                self.driveService.authorizer = user.fetcherAuthorizer
+                continuation.resume(returning: true)
             }
         }
     }
@@ -486,10 +674,11 @@ private final class GoogleDriveService {
         let folderID = try await ensurePotlyFolderID()
 
         let list = GTLRDriveQuery_FilesList.query()
-        list.q = "name contains 'potly-backup-' and trashed=false and '\(folderID)' in parents"
+        // 以資料夾內「最新修改時間」的 JSON 檔作為還原來源
+        list.q = "mimeType='application/json' and trashed=false and '\(folderID)' in parents"
         list.orderBy = "modifiedTime desc"
         list.pageSize = 1
-        list.fields = "files(id,name)"
+        list.fields = "files(id,name,modifiedTime)"
         let listObj = try await executeQuery(list)
         guard let files = (listObj as? GTLRDrive_FileList)?.files,
               let first = files.first,
@@ -505,6 +694,10 @@ private final class GoogleDriveService {
         throw DriveError.apiError("下載備份檔失敗")
     }
 #else
+    func restoreConnectionIfPossible() async -> Bool {
+        false
+    }
+
     func connectAndPrepareFolder() async throws -> String {
         throw DriveError.sdkMissing
     }

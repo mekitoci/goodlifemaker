@@ -137,6 +137,12 @@ private struct TrainingView: View {
                         }
                     }
                 }
+                if state.weightKg == 0 {
+                    Text("可先點重量設定本次負重")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.42))
+                        .padding(.leading, 2)
+                }
             }
             Spacer()
         }

@@ -9,13 +9,46 @@ struct Exercise: Identifiable, Codable, Equatable {
     var muscleGroup: String
     var defaultSets: Int
     var restSeconds: Int
+    var defaultWeightKg: Double
 
-    init(id: UUID = UUID(), name: String, muscleGroup: String, defaultSets: Int, restSeconds: Int) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        muscleGroup: String,
+        defaultSets: Int,
+        restSeconds: Int,
+        defaultWeightKg: Double = 0
+    ) {
         self.id          = id
         self.name        = name
         self.muscleGroup = muscleGroup
         self.defaultSets = defaultSets
         self.restSeconds = restSeconds
+        self.defaultWeightKg = max(0, defaultWeightKg)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, muscleGroup, defaultSets, restSeconds, defaultWeightKg
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        muscleGroup = try c.decode(String.self, forKey: .muscleGroup)
+        defaultSets = try c.decode(Int.self, forKey: .defaultSets)
+        restSeconds = try c.decode(Int.self, forKey: .restSeconds)
+        defaultWeightKg = max(0, (try c.decodeIfPresent(Double.self, forKey: .defaultWeightKg)) ?? 0)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(muscleGroup, forKey: .muscleGroup)
+        try c.encode(defaultSets, forKey: .defaultSets)
+        try c.encode(restSeconds, forKey: .restSeconds)
+        try c.encode(defaultWeightKg, forKey: .defaultWeightKg)
     }
 }
 
@@ -150,9 +183,49 @@ enum AppScreen {
     case dictionary
     case workout
     case workoutHistory
+    case bodyManagement
     case workoutPlan
     case achievements
     case settings
+}
+
+enum DietStatus: String, Codable, CaseIterable, Identifiable {
+    case light
+    case normal
+    case indulgent
+    case unknown
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .light: return "輕盈"
+        case .normal: return "一般"
+        case .indulgent: return "罪惡"
+        case .unknown: return "？"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .light: return "leaf.fill"
+        case .normal: return "circle.grid.2x2.fill"
+        case .indulgent: return "birthday.cake.fill"
+        case .unknown: return "questionmark.circle.fill"
+        }
+    }
+}
+
+struct WeightLogEntry: Identifiable, Codable {
+    let id: UUID
+    var date: Date
+    var weightKg: Double
+
+    init(id: UUID = UUID(), date: Date = .now, weightKg: Double) {
+        self.id = id
+        self.date = date
+        self.weightKg = weightKg
+    }
 }
 
 // MARK: - Workout Plan

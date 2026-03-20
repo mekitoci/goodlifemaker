@@ -72,6 +72,8 @@ final class AppState {
         var lastReps: Int
         var weightUnitRaw: String
         var healthKitRequested: Bool
+        var dietStatusByDate: [String: String]
+        var weightLogs: [WeightLogEntry]
     }
 
     private static let healthKitRequestedKey = "healthkit_requested_v1"
@@ -106,7 +108,9 @@ final class AppState {
             lastWeight: lastWeight,
             lastReps: lastReps,
             weightUnitRaw: weightUnitRaw,
-            healthKitRequested: healthKitRequested
+            healthKitRequested: healthKitRequested,
+            dietStatusByDate: dietStatusByDate,
+            weightLogs: weightLogs
         )
     }
 
@@ -134,6 +138,8 @@ final class AppState {
         lastReps = snapshot.lastReps
         weightUnitRaw = snapshot.weightUnitRaw
         healthKitRequested = snapshot.healthKitRequested
+        dietStatusByDate = snapshot.dietStatusByDate
+        weightLogs = snapshot.weightLogs
     }
 
     // MARK: - Exercise catalog（支援 CRUD，UserDefaults 持久化）
@@ -290,7 +296,8 @@ final class AppState {
                     name: name,
                     muscleGroup: group,
                     defaultSets: sets,
-                    restSeconds: rest
+                    restSeconds: rest,
+                    defaultWeightKg: max(0, ex.defaultWeightKg)
                 )
             )
         }
@@ -340,7 +347,8 @@ final class AppState {
             name: cleaned,
             muscleGroup: exercise.muscleGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "全身" : exercise.muscleGroup,
             defaultSets: max(1, exercise.defaultSets),
-            restSeconds: max(30, exercise.restSeconds)
+            restSeconds: max(30, exercise.restSeconds),
+            defaultWeightKg: max(0, exercise.defaultWeightKg)
         )
         let key = "\(normalized.muscleGroup)|\(normalized.name)"
         if !exercises.contains(where: { "\($0.muscleGroup)|\($0.name)" == key }) {
@@ -360,7 +368,8 @@ final class AppState {
                 name: cleaned,
                 muscleGroup: exercise.muscleGroup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "全身" : exercise.muscleGroup,
                 defaultSets: max(1, exercise.defaultSets),
-                restSeconds: max(30, exercise.restSeconds)
+                restSeconds: max(30, exercise.restSeconds),
+                defaultWeightKg: max(0, exercise.defaultWeightKg)
             )
         }
     }
@@ -396,7 +405,8 @@ final class AppState {
             name: name.isEmpty ? "未命名動作" : name,
             muscleGroup: group,
             defaultSets: max(1, defaultSets),
-            restSeconds: max(30, restSeconds)
+            restSeconds: max(30, restSeconds),
+            defaultWeightKg: 0
         )
         exercises.append(created)
         return created
@@ -405,6 +415,8 @@ final class AppState {
     // MARK: - Workout Plans
 
     private static let plansKey = "user_workout_plans_v1"
+    private static let dietStatusLogsKey = "diet_status_logs_v1"
+    private static let weightLogsKey = "weight_logs_v1"
 
     var workoutPlans: [WorkoutPlan] = [] {
         didSet { savePlans() }
@@ -482,6 +494,70 @@ final class AppState {
            let saved = try? JSONDecoder().decode([WorkoutPlan].self, from: data) {
             workoutPlans = saved
         }
+    }
+
+    // MARK: - Body management
+
+    private static let bodyDateFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.calendar = Calendar(identifier: .gregorian)
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.timeZone = .current
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt
+    }()
+
+    private func bodyDateKey(for date: Date) -> String {
+        Self.bodyDateFormatter.string(from: date)
+    }
+
+    var dietStatusByDate: [String: String] = {
+        if let data = UserDefaults.standard.data(forKey: AppState.dietStatusLogsKey),
+           let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
+            return decoded
+        }
+        return [:]
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(dietStatusByDate) {
+                UserDefaults.standard.set(data, forKey: Self.dietStatusLogsKey)
+            }
+        }
+    }
+
+    var weightLogs: [WeightLogEntry] = {
+        if let data = UserDefaults.standard.data(forKey: AppState.weightLogsKey),
+           let decoded = try? JSONDecoder().decode([WeightLogEntry].self, from: data) {
+            return decoded.sorted(by: { $0.date < $1.date })
+        }
+        return []
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(weightLogs) {
+                UserDefaults.standard.set(data, forKey: Self.weightLogsKey)
+            }
+        }
+    }
+
+    var todayDietStatus: DietStatus? {
+        guard let raw = dietStatusByDate[bodyDateKey(for: .now)] else { return nil }
+        return DietStatus(rawValue: raw)
+    }
+
+    func setTodayDietStatus(_ status: DietStatus) {
+        dietStatusByDate[bodyDateKey(for: .now)] = status.rawValue
+    }
+
+    func addWeightLogToday(_ weightKg: Double) {
+        let normalized = max(20, min(weightKg, 300))
+        let today = Calendar.current.startOfDay(for: .now)
+        if let idx = weightLogs.firstIndex(where: { Calendar.current.isDate($0.date, inSameDayAs: today) }) {
+            weightLogs[idx].weightKg = normalized
+            weightLogs[idx].date = today
+        } else {
+            weightLogs.append(WeightLogEntry(date: today, weightKg: normalized))
+        }
+        weightLogs.sort(by: { $0.date < $1.date })
     }
 
     init() {
@@ -724,7 +800,7 @@ final class AppState {
     }
 
     var lastWeight: Double = {
-        (UserDefaults.standard.object(forKey: "lastWeight") as? Double) ?? 60
+        (UserDefaults.standard.object(forKey: "lastWeight") as? Double) ?? 0
     }() { didSet { UserDefaults.standard.set(lastWeight, forKey: "lastWeight") } }
 
     var lastReps: Int = {
@@ -742,7 +818,7 @@ final class AppState {
     var currentSet: Int = 1
     var totalSets: Int = 4
     var currentSetStartTime: Date = .now
-    var weightKg: Double = 60
+    var weightKg: Double = 0
     var editingWeight: Bool = false
     var weightInputText: String = ""
     var selectedReps: Int = 10
@@ -1041,7 +1117,7 @@ final class AppState {
         if let weightKgOverride {
             weightKg = max(0, weightKgOverride)
         } else {
-            weightKg = (lastExerciseName == exercise.name) ? lastWeight : 60
+            weightKg = (lastExerciseName == exercise.name) ? lastWeight : max(0, exercise.defaultWeightKg)
         }
         if let repsOverride {
             selectedReps = max(1, repsOverride)
@@ -1073,6 +1149,14 @@ final class AppState {
         lastWeight          = weightKg
         lastReps            = selectedReps
         lastWorkoutTimestamp = Date().timeIntervalSince1970
+
+        // 若本次訓練有設定重量，回寫成該動作的預設重量
+        // 之後再次開始同動作時會直接帶入。
+        if weightKg > 0,
+           let idx = exercises.firstIndex(where: { $0.id == exercise.id }) {
+            exercises[idx].defaultWeightKg = weightKg
+            selectedExercise?.defaultWeightKg = weightKg
+        }
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 

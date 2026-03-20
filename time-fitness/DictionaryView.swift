@@ -174,7 +174,7 @@ private struct ExerciseQuickCard: View {
                         .padding(.horizontal, 10).padding(.vertical, 4)
                         .background(brandGreen.opacity(0.95)).clipShape(Capsule())
                 }
-                Text("\(exercise.defaultSets) 組 · 休息 \(exercise.restSeconds) 秒")
+                Text("\(exercise.defaultSets) 組 · 休息 \(exercise.restSeconds) 秒 · \(exercise.defaultWeightKg == floor(exercise.defaultWeightKg) ? String(Int(exercise.defaultWeightKg)) : String(format: "%.1f", exercise.defaultWeightKg)) kg")
                     .font(.subheadline).foregroundStyle(Color.gray.opacity(0.85))
             }
             Button(action: onStart) {
@@ -206,6 +206,7 @@ private struct ExerciseFormSheet: View {
     @State private var muscleGroup = ""
     @State private var defaultSets = 4
     @State private var restSeconds = 90
+    @State private var defaultWeightKg: Double = 0
 
     // Fixed colors — never affected by system appearance
     private let bg         = Color.white
@@ -320,6 +321,50 @@ private struct ExerciseFormSheet: View {
                             .padding(.horizontal, 4)
                         }
 
+                        // 預設重量
+                        formCard(title: "預設重量（kg）") {
+                            HStack(spacing: 16) {
+                                Button {
+                                    if defaultWeightKg > 0 {
+                                        defaultWeightKg = max(0, defaultWeightKg - 2.5)
+                                    }
+                                } label: {
+                                    Image(systemName: "minus")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(textColor)
+                                        .frame(width: 40, height: 40)
+                                        .background(softGray)
+                                        .clipShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+
+                                Text(defaultWeightKg == floor(defaultWeightKg)
+                                     ? "\(Int(defaultWeightKg)) kg"
+                                     : String(format: "%.1f kg", defaultWeightKg))
+                                    .font(.title3.bold())
+                                    .foregroundStyle(textColor)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+
+                                Button {
+                                    if defaultWeightKg < 500 {
+                                        defaultWeightKg = min(500, defaultWeightKg + 2.5)
+                                    }
+                                } label: {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(textColor)
+                                        .frame(width: 40, height: 40)
+                                        .background(softGray)
+                                        .clipShape(Circle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+
+                            Text("可先留 0，開始訓練後再調整")
+                                .font(.caption)
+                                .foregroundStyle(labelColor)
+                        }
+
                         // Save
                         Button {
                             let ex = Exercise(
@@ -327,7 +372,8 @@ private struct ExerciseFormSheet: View {
                                 name: name.trimmingCharacters(in: .whitespaces),
                                 muscleGroup: muscleGroup,
                                 defaultSets: defaultSets,
-                                restSeconds: restSeconds
+                                restSeconds: restSeconds,
+                                defaultWeightKg: defaultWeightKg
                             )
                             onSave(ex)
                             dismiss()
@@ -360,6 +406,7 @@ private struct ExerciseFormSheet: View {
             if case .edit(let ex) = mode {
                 name = ex.name; muscleGroup = ex.muscleGroup
                 defaultSets = ex.defaultSets; restSeconds = ex.restSeconds
+                defaultWeightKg = ex.defaultWeightKg
             }
         }
     }

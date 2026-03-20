@@ -25,7 +25,6 @@
 		2F509B162F69E5AF00750521 /* RestTimerWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2F509B042F69E5AD00750521 /* RestTimerWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2F509B1D2F69E8D400750521 /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */; };
 		2F509B1E2F69E91800750521 /* RestTimerAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */; };
-		2F509B232F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist in Resources */ = {isa = PBXBuildFile; fileRef = 2F509B222F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist */; };
 		2F509B282F6C4DF900750521 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 2F509B272F6C4DF900750521 /* GoogleSignIn */; };
 		2F509B2A2F6C4E2500750521 /* GoogleAPIClientForREST_Drive in Frameworks */ = {isa = PBXBuildFile; productRef = 2F509B292F6C4E2500750521 /* GoogleAPIClientForREST_Drive */; };
 		2F509B2C2F6C4EAB00750521 /* GoogleAPIClientForRESTCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2F509B2B2F6C4EAB00750521 /* GoogleAPIClientForRESTCore */; };
@@ -37,6 +36,7 @@
 		AA100001FFFFFFFF00000006 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000006 /* WorkoutView.swift */; };
 		AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000007 /* GardenView.swift */; };
 		AA100001FFFFFFFF00000008 /* CloudSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000008 /* CloudSyncView.swift */; };
+		AA100001FFFFFFFF00000009 /* BodyManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000009 /* BodyManagementView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -100,7 +100,6 @@
 		2F509B132F69E5AF00750521 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2F509B1B2F69E8BC00750521 /* RestTimerAttributes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RestTimerAttributes.swift; sourceTree = "<group>"; };
 		2F509B1F2F6B053E00750521 /* time-fitness.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "time-fitness.entitlements"; sourceTree = "<group>"; };
-		2F509B222F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist"; sourceTree = "<group>"; };
 		2F509B242F6C4A2600750521 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000001 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -110,6 +109,7 @@
 		AA200001FFFFFFFF00000006 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000007 /* GardenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GardenView.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000008 /* CloudSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncView.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000009 /* BodyManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyManagementView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -176,7 +176,6 @@
 			isa = PBXGroup;
 			children = (
 				2F509B242F6C4A2600750521 /* Info.plist */,
-				2F509B222F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist */,
 				2F509B1F2F6B053E00750521 /* time-fitness.entitlements */,
 				2F509AD12F658D8900750521 /* time_fitnessApp.swift */,
 				2F509AD32F658D8900750521 /* ContentView.swift */,
@@ -191,6 +190,7 @@
 				AA200001FFFFFFFF00000006 /* WorkoutView.swift */,
 				AA200001FFFFFFFF00000007 /* GardenView.swift */,
 				AA200001FFFFFFFF00000008 /* CloudSyncView.swift */,
+				AA200001FFFFFFFF00000009 /* BodyManagementView.swift */,
 				2F509AD72F658D8B00750521 /* Preview Content */,
 			);
 			path = "time-fitness";
@@ -380,7 +380,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				2F509AD92F658D8B00750521 /* Preview Assets.xcassets in Resources */,
-				2F509B232F6C4A0600750521 /* client_723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65.apps.googleusercontent.com.plist in Resources */,
 				2F509AD62F658D8B00750521 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -427,6 +426,7 @@
 				AA100001FFFFFFFF00000006 /* WorkoutView.swift in Sources */,
 				AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */,
 				AA100001FFFFFFFF00000008 /* CloudSyncView.swift in Sources */,
+				AA100001FFFFFFFF00000009 /* BodyManagementView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

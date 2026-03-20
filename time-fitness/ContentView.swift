@@ -17,6 +17,7 @@ struct ContentView: View {
                     case .dictionary:     DictionaryView()
                     case .workout:        WorkoutView()
                     case .workoutHistory: WorkoutHistoryView()
+                    case .bodyManagement: BodyManagementView()
                     case .workoutPlan:    WorkoutPlanView()
                     case .achievements:   AchievementsView()
                     case .settings:       SettingsView()
@@ -44,6 +45,12 @@ struct ContentView: View {
                         onSelectWorkoutHistory: {
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 state.screen = .workoutHistory
+                                state.showGlobalMenu = false
+                            }
+                        },
+                        onSelectBodyManagement: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                state.screen = .bodyManagement
                                 state.showGlobalMenu = false
                             }
                         },
@@ -78,6 +85,7 @@ struct ContentView: View {
 private struct AppSideMenuView: View {
     let onSelectMyTree: () -> Void
     let onSelectWorkoutHistory: () -> Void
+    let onSelectBodyManagement: () -> Void
     let onSelectAchievements: () -> Void
     let onSelectSettings: () -> Void
 
@@ -103,6 +111,7 @@ private struct AppSideMenuView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     menuRow(icon: "leaf.fill",      title: "我的小樹", action: onSelectMyTree)
                     menuRow(icon: "chart.bar.fill", title: "運動紀錄", action: onSelectWorkoutHistory)
+                    menuRow(icon: "figure.run",     title: "體態管理", action: onSelectBodyManagement)
                     menuRow(icon: "trophy.fill",    title: "成就達成", action: onSelectAchievements)
                     menuRow(icon: "gearshape.fill", title: "設定", action: onSelectSettings)
                 }
@@ -194,9 +203,6 @@ struct AchievementsView: View {
                         Text("成就達成")
                             .font(.headline.bold())
                             .foregroundColor(.white)
-                        Text("積分解鎖花盆")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.8))
                     }
 
                     Spacer()
@@ -460,9 +466,6 @@ struct SettingsView: View {
                         Text("設定")
                             .font(.headline.bold())
                             .foregroundColor(.white)
-                        Text("個人偏好")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.78))
                     }
 
                     Spacer()
@@ -627,8 +630,8 @@ private struct AboutAppSheet: View {
             ZStack {
                 pageBg.ignoresSafeArea()
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 14) {
                             HStack(spacing: 10) {
                                 Circle()
                                     .fill(accent.opacity(0.22))
@@ -652,29 +655,24 @@ private struct AboutAppSheet: View {
                             HStack(spacing: 8) {
                                 aboutTag("本機儲存")
                                 aboutTag("不追蹤")
+                                aboutTag("可手動備份")
                             }
 
                             Text("我們在本機處理你的訓練資料與 HealthKit 顯示資訊，不會在你未同意下自動上傳雲端。")
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.9))
                                 .fixedSize(horizontal: false, vertical: true)
-                                .padding(.top, 2)
                         }
                         .padding(16)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.16), Color.white.opacity(0.08)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
                         )
 
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 12) {
                             aboutBullet(
                                 icon: "internaldrive.fill",
                                 title: "資料儲存位置",
@@ -692,27 +690,23 @@ private struct AboutAppSheet: View {
                             )
                         }
                         .padding(16)
-                        .background(Color.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
                         )
 
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text("如有疑問")
                                 .font(.subheadline.bold())
-                                .foregroundStyle(.white.opacity(0.92))
-                            Text("你可以在「設定 > 雲端同步」管理 Google Drive 匯出與還原。")
+                                .foregroundStyle(.white.opacity(0.94))
+                            Text("歡迎寄信聯絡我！")
                                 .font(.caption)
-                                .foregroundStyle(.white.opacity(0.75))
+                                .foregroundStyle(.white.opacity(0.78))
                                 .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(12)
-                        .background(Color.white.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                        VStack(spacing: 0) {
                             Button {
                                 if let url = URL(string: "mailto:oouuiicc13@gmail.com") {
                                     openURL(url)
@@ -723,7 +717,7 @@ private struct AboutAppSheet: View {
                                     Text("聯絡我")
                                 }
                                 .font(.headline.bold())
-                                .foregroundStyle(Color(red: 0.22, green: 0.42, blue: 0.38))
+                                .foregroundStyle(Color(red: 0.18, green: 0.38, blue: 0.35))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 13)
                                 .background(Color.white)
@@ -731,16 +725,18 @@ private struct AboutAppSheet: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        .padding(12)
-                        .background(Color(red: 0.30, green: 0.56, blue: 0.52).opacity(0.92))
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
                         )
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
-                    .padding(.top, 22)
+                    .padding(.top, 18)
                     .padding(.bottom, 28)
                 }
             }
@@ -771,20 +767,20 @@ private struct AboutAppSheet: View {
     private func aboutBullet(icon: String, title: String, body: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Circle()
-                .fill(Color(red: 0.94, green: 0.96, blue: 0.95))
+                .fill(Color.white.opacity(0.18))
                 .frame(width: 30, height: 30)
                 .overlay(
                     Image(systemName: icon)
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color(red: 0.24, green: 0.62, blue: 0.49))
+                        .foregroundStyle(Color.white.opacity(0.95))
                 )
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
                     .font(.subheadline.bold())
-                    .foregroundStyle(textPrimary)
+                    .foregroundStyle(.white)
                 Text(body)
                     .font(.caption)
-                    .foregroundStyle(textSecondary)
+                    .foregroundStyle(.white.opacity(0.82))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

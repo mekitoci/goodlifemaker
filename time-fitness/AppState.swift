@@ -1208,6 +1208,23 @@ final class AppState {
         if remainingRestSeconds == 0 { endRest() }
     }
 
+    /// 依目前 SwiftData 的訓練紀錄重算首頁統計（刪除紀錄後使用）
+    func refreshSummaryStats(from sessions: [WorkoutSession]) {
+        let cal = Calendar.current
+        let todaySessions = sessions.filter { cal.isDateInToday($0.date) }
+
+        let todayCaloriesValue = todaySessions.reduce(0.0) { total, session in
+            total + session.sets.reduce(0.0) { $0 + Double($1.reps) * $1.weightKg * 0.08 }
+        }
+        let lifetimeCaloriesValue = sessions.reduce(0.0) { total, session in
+            total + session.sets.reduce(0.0) { $0 + Double($1.reps) * $1.weightKg * 0.08 }
+        }
+
+        todayCalories = todayCaloriesValue
+        todaySets = todaySessions.count
+        lifetimeCalories = lifetimeCaloriesValue
+    }
+
     private func tickHealthKitMinuteRefresh() {
         let minuteStamp = Int(Date().timeIntervalSince1970 / 60)
         guard minuteStamp != lastHealthKitMinuteStamp else { return }

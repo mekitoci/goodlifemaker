@@ -959,7 +959,12 @@ struct WorkoutHistoryView: View {
             }
         }
         .alert("刪除紀錄", isPresented: $showingDeleteAlert, presenting: pendingDelete) { s in
-            Button("刪除", role: .destructive) { modelContext.delete(s); try? modelContext.save() }
+            Button("刪除", role: .destructive) {
+                modelContext.delete(s)
+                try? modelContext.save()
+                let remaining = sessions.filter { $0.id != s.id }
+                state.refreshSummaryStats(from: remaining)
+            }
             Button("取消", role: .cancel) {}
         } message: { s in Text("確定刪除「\(s.exerciseName)」的訓練紀錄？") }
         .sheet(item: $selectedSessionForDetail) { session in
@@ -1503,6 +1508,19 @@ private struct ExerciseHistoryDetailView: View {
         return max(0, clampedMin - padding)...(clampedMax + padding)
     }
 
+    private var yAxisTicks: [Double] {
+        let minV = yDomain.lowerBound
+        let maxV = yDomain.upperBound
+        let step = (maxV - minV) / 3.0
+        // Y 軸顯示要「上大下小」，與圖表座標方向一致
+        return [0, 1, 2, 3].map { maxV - Double($0) * step }
+    }
+
+    /// 以日期類別數判斷是否需要水平滑動（不是看資料總筆數）
+    private var trendDateCount: Int {
+        Set(trend.map(\.dateLabel)).count
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -1568,75 +1586,112 @@ private struct ExerciseHistoryDetailView: View {
                     .foregroundStyle(.white.opacity(0.65))
                     .frame(maxWidth: .infinity, minHeight: 120)
             } else {
-                Chart(trend) { point in
-                    let clamped = min(max(point.maxWeight, yDomain.lowerBound), yDomain.upperBound)
+                GeometryReader { geo in
+                    let yAxisWidth: CGFloat = 34
+                    let gap: CGFloat = 8
+                    let visiblePlotWidth = max(120, geo.size.width - yAxisWidth - gap)
+                    let contentPlotWidth = max(visiblePlotWidth, CGFloat(trendDateCount) * 64)
+                    let needScroll = contentPlotWidth > visiblePlotWidth + 1
 
-                    AreaMark(
-                        x: .value("次", point.index),
-                        y: .value("重量", clamped)
-                    )
-                    .interpolationMethod(.catmullRom)
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                whAccentColor.opacity(0.35),
-                                whAccentColor.opacity(0.05),
-                                .clear
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
+                    HStack(spacing: gap) {
+                        VStack(spacing: 0) {
+                            Text("kg")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.white.opacity(0.6))
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .padding(.bottom, 2)
+                            ForEach(Array(yAxisTicks.enumerated()), id: \.offset) { idx, value in
+                                Text(String(format: "%.1f", value))
+                                    .font(.caption2)
+                                    .foregroundStyle(.white.opacity(0.62))
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                if idx < yAxisTicks.count - 1 { Spacer(minLength: 0) }
+                            }
+                        }
+                        .frame(width: yAxisWidth, height: 180)
 
-                    LineMark(
-                        x: .value("次", point.index),
-                        y: .value("重量", clamped)
-                    )
-                    .interpolationMethod(.catmullRom)
-                    .foregroundStyle(whAccentColor)
-                    .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-
-                    PointMark(
-                        x: .value("次", point.index),
-                        y: .value("重量", clamped)
-                    )
-                    .foregroundStyle(.white)
-                    .symbolSize(46)
-                    .annotation(position: .top, spacing: 4) {
-                        Text(point.dateLabel)
-                            .font(.system(size: 8))
-                            .foregroundStyle(.white.opacity(0.55))
+                        if needScroll {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                trendChart(width: contentPlotWidth)
+                            }
+                        } else {
+                            trendChart(width: visiblePlotWidth)
+                        }
                     }
-                }
-                .chartYScale(domain: yDomain)
-                .chartXScale(domain: 1...(max(2, trend.count)))
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: min(trend.count, 6))) { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
-                            .foregroundStyle(Color.white.opacity(0.12))
-                        AxisValueLabel()
-                            .foregroundStyle(Color.white.opacity(0.65))
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
-                            .foregroundStyle(Color.white.opacity(0.12))
-                        AxisValueLabel()
-                            .foregroundStyle(Color.white.opacity(0.65))
-                    }
-                }
-                .chartPlotStyle { plot in
-                    plot
-                        .background(Color.white.opacity(0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .frame(height: 180)
+
+                Text("可左右滑動查看較早紀錄")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.52))
             }
         }
         .padding(14)
         .background(whCardColor)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func trendChart(width: CGFloat) -> some View {
+        Chart(trend) { point in
+            let clamped = min(max(point.maxWeight, yDomain.lowerBound), yDomain.upperBound)
+
+            ForEach(yAxisTicks, id: \.self) { tick in
+                RuleMark(y: .value("YTick", tick))
+                    .lineStyle(StrokeStyle(lineWidth: 0.6, dash: [3, 3]))
+                    .foregroundStyle(Color.white.opacity(0.12))
+            }
+
+            AreaMark(
+                x: .value("日期", point.dateLabel),
+                y: .value("重量", clamped)
+            )
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [
+                        whAccentColor.opacity(0.35),
+                        whAccentColor.opacity(0.05),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+
+            LineMark(
+                x: .value("日期", point.dateLabel),
+                y: .value("重量", clamped)
+            )
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(whAccentColor)
+            .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+
+            PointMark(
+                x: .value("日期", point.dateLabel),
+                y: .value("重量", clamped)
+            )
+            .foregroundStyle(.white)
+            .symbolSize(46)
+            .annotation(position: .top, spacing: 4) {
+                Text(String(format: "%.1f kg", point.maxWeight))
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.88))
+            }
+        }
+        .chartYScale(domain: yDomain)
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: min(trendDateCount, 6))) { _ in
+                AxisValueLabel()
+                    .foregroundStyle(Color.white.opacity(0.65))
+            }
+        }
+        .chartYAxis(.hidden)
+        .chartPlotStyle { plot in
+            plot
+                .background(Color.white.opacity(0.05))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .frame(width: width, height: 180)
     }
 
     private var recentRecordsCard: some View {

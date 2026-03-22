@@ -5,12 +5,15 @@ import UIKit
 
 struct ContentView: View {
     @State private var state = AppState()
+    @State private var sceneMoveEdge: Edge = .trailing
+    @State private var lastSceneOrder: Int = 0
+    @State private var hideBottomDock: Bool = false
 
     private let countdownTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .leading) {
+            ZStack(alignment: .bottom) {
                 Group {
                     switch state.screen {
                     case .home:           HomeView()
@@ -23,137 +26,158 @@ struct ContentView: View {
                     case .settings:       SettingsView()
                     }
                 }
+                .id("\(state.screen)-\(state.homeTab)")
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: sceneMoveEdge).combined(with: .opacity),
+                        removal: .move(edge: opposite(of: sceneMoveEdge)).combined(with: .opacity)
+                    )
+                )
+                .animation(.easeInOut(duration: 0.24), value: state.screen)
+                .animation(.easeInOut(duration: 0.24), value: state.homeTab)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 8)
+                        .onChanged { value in
+                            // 向上滑（內容往下捲）先收起導覽列，向下滑再顯示
+                            if value.translation.height < -10 {
+                                if !hideBottomDock {
+                                    withAnimation(.easeOut(duration: 0.18)) {
+                                        hideBottomDock = true
+                                    }
+                                }
+                            } else if value.translation.height > 10 {
+                                if hideBottomDock {
+                                    withAnimation(.easeOut(duration: 0.2)) {
+                                        hideBottomDock = false
+                                    }
+                                }
+                            }
+                        }
+                        .onEnded { value in
+                            // 回到頂部時通常會有下拉手勢，結束後強制顯示導覽列
+                            if value.translation.height > 0 {
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    hideBottomDock = false
+                                }
+                            }
+                        }
+                )
                 .toolbar(.hidden, for: .navigationBar)
 
-                if state.showGlobalMenu {
-                    Color.black.opacity(0.35)
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                state.showGlobalMenu = false
-                            }
-                        }
-
-                    AppSideMenuView(
-                        onSelectMyTree: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                state.screen = .home
-                                state.homeTab = .tree
-                                state.showGlobalMenu = false
-                            }
-                        },
-                        onSelectWorkoutHistory: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                state.screen = .workoutHistory
-                                state.showGlobalMenu = false
-                            }
-                        },
-                        onSelectBodyManagement: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                state.screen = .bodyManagement
-                                state.showGlobalMenu = false
-                            }
-                        },
-                        onSelectAchievements: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                state.screen = .achievements
-                                state.showGlobalMenu = false
-                            }
-                        },
-                        onSelectSettings: {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                state.screen = .settings
-                                state.showGlobalMenu = false
-                            }
-                        }
-                    )
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-                    .zIndex(1)
+                if state.screen != .workout {
+                    GlobalBottomDock()
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 16)
+                        .offset(y: hideBottomDock ? 120 : 0)
+                        .opacity(hideBottomDock ? 0.0 : 1.0)
+                        .allowsHitTesting(!hideBottomDock)
+                        .animation(.spring(duration: 0.28, bounce: 0.04), value: hideBottomDock)
                 }
             }
         }
         .environment(state)
         .onAppear {
             state.requestHealthKitAccessIfNeeded()
+            lastSceneOrder = sceneOrder(screen: state.screen, homeTab: state.homeTab)
         }
         .onReceive(countdownTimer) { _ in
             state.handleCountdownTick()
         }
-    }
-}
-
-private struct AppSideMenuView: View {
-    let onSelectMyTree: () -> Void
-    let onSelectWorkoutHistory: () -> Void
-    let onSelectBodyManagement: () -> Void
-    let onSelectAchievements: () -> Void
-    let onSelectSettings: () -> Void
-
-    var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 12) {
-                        DrawableImage(path: "potly-icon", fallbackColor: .white)
-                            .frame(width: 32, height: 32)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        Text("Potly")
-                            .font(.headline.bold())
-                            .foregroundColor(.white)
-                    }
-                    Divider()
-                        .overlay(Color.white.opacity(0.4))
-                }
-                .padding(.top, 32)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    menuRow(icon: "leaf.fill",      title: "我的小樹", action: onSelectMyTree)
-                    menuRow(icon: "chart.bar.fill", title: "運動紀錄", action: onSelectWorkoutHistory)
-                    menuRow(icon: "figure.run",     title: "體態管理", action: onSelectBodyManagement)
-                    menuRow(icon: "trophy.fill",    title: "成就達成", action: onSelectAchievements)
-                    menuRow(icon: "gearshape.fill", title: "設定", action: onSelectSettings)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-
-                Spacer()
-            }
-            .frame(minWidth: 260, maxWidth: 260)
-            .frame(maxHeight: .infinity, alignment: .top)
-            .background(
-                Color(red: 0.44, green: 0.62, blue: 0.58)
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    )
-            )
-            .shadow(color: .black.opacity(0.25), radius: 10, x: 4, y: 0)
-
-            Spacer()
+        .onChange(of: state.screen, initial: false) { _, newValue in
+            let next = sceneOrder(screen: newValue, homeTab: state.homeTab)
+            sceneMoveEdge = next >= lastSceneOrder ? .trailing : .leading
+            lastSceneOrder = next
+            hideBottomDock = false
+        }
+        .onChange(of: state.homeTab, initial: false) { _, newValue in
+            let next = sceneOrder(screen: state.screen, homeTab: newValue)
+            sceneMoveEdge = next >= lastSceneOrder ? .trailing : .leading
+            lastSceneOrder = next
+            hideBottomDock = false
         }
     }
 
-    private func menuRow(icon: String, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.white.opacity(0.18))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(.white)
+    private func sceneOrder(screen: AppScreen, homeTab: HomeTab) -> Int {
+        switch screen {
+        case .home:
+            return homeTab == .tree ? 0 : 1
+        case .workoutHistory:
+            return 2
+        case .bodyManagement:
+            return 3
+        case .dictionary:
+            return 2
+        case .workout:
+            return 2
+        case .workoutPlan:
+            return 2
+        case .achievements:
+            return 1
+        case .settings:
+            return 4
+        }
+    }
+
+    private func opposite(of edge: Edge) -> Edge {
+        switch edge {
+        case .leading: return .trailing
+        case .trailing: return .leading
+        case .top: return .bottom
+        case .bottom: return .top
+        }
+    }
+}
+
+private struct GlobalBottomDock: View {
+    @Environment(AppState.self) private var state
+
+    var body: some View {
+        HStack(spacing: 10) {
+            dockIcon("leaf.fill", selected: state.screen == .home && state.homeTab == .tree) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    state.screen = .home
+                    state.homeTab = .tree
                 }
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                Spacer()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
-            .contentShape(Rectangle())
+            dockIcon("basket.fill", selected: state.screen == .home && state.homeTab == .garden) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    state.screen = .home
+                    state.homeTab = .garden
+                }
+            }
+            dockIcon("chart.bar.fill", selected: state.screen == .workoutHistory) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    state.screen = .workoutHistory
+                }
+            }
+            dockIcon("figure.run", selected: state.screen == .bodyManagement) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    state.screen = .bodyManagement
+                }
+            }
+            dockIcon("gearshape.fill", selected: state.screen == .settings) {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    state.screen = .settings
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(Color.black.opacity(0.32))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.12), lineWidth: 1))
+    }
+
+    private func dockIcon(_ systemName: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 50, height: 40)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(selected ? Color.gray.opacity(0.32) : .clear)
+                )
         }
         .buttonStyle(.plain)
     }
@@ -186,16 +210,8 @@ struct AchievementsView: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            state.showGlobalMenu = true
-                        }
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.title3.bold())
-                            .foregroundStyle(.white)
-                    }
-                    .buttonStyle(.plain)
+                    Spacer()
+                        .frame(width: 40)
 
                     Spacer()
 
@@ -449,16 +465,8 @@ struct SettingsView: View {
 
             VStack(spacing: 0) {
                 HStack {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            state.showGlobalMenu = true
-                        }
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.title3.bold())
-                            .foregroundStyle(.white)
-                    }
-                    .buttonStyle(.plain)
+                    Spacer()
+                        .frame(width: 40)
 
                     Spacer()
 
@@ -917,8 +925,7 @@ struct WorkoutHistoryView: View {
     @State private var showingDeleteAlert = false
     @State private var pendingDelete: WorkoutSession?
     @State private var selectedSessionForDetail: WorkoutSession?
-    @State private var showShareSheet = false
-    @State private var shareImage: UIImage?
+    @State private var showShareComposer = false
     @Environment(\.modelContext) private var modelContext
 
     private var muscleGroups: [String] {
@@ -973,19 +980,30 @@ struct WorkoutHistoryView: View {
                 sessions: sessions.filter { $0.exerciseName == session.exerciseName }
             )
         }
-        .sheet(isPresented: $showShareSheet) {
-            if let shareImage {
-                ActivityShareSheet(activityItems: [shareImage])
-            }
+        .sheet(isPresented: $showShareComposer) {
+            ShareExportView(
+                title: "分享紀錄",
+                styleTitles: ["經典", "卡片", "簡約"],
+                renderPage: { style in
+                    AnyView(
+                        WorkoutRecordShareCard(
+                            style: style,
+                            heatDays: shareMonthData().map { ShareHeatItem(date: $0.date, count: $0.count) },
+                            records: recordsForSelectedDate,
+                            selectedDateText: selectedDateText,
+                            todayCalories: state.todayTotalCalories
+                        )
+                    )
+                }
+            )
         }
     }
 
     // MARK: Nav Bar
     private var histNavBar: some View {
         HStack {
-            Button { withAnimation(.easeInOut(duration: 0.3)) { state.showGlobalMenu = true } } label: {
-                Image(systemName: "line.3.horizontal").font(.title3.bold()).foregroundStyle(.white)
-            }.buttonStyle(.plain)
+            Spacer()
+                .frame(width: 40)
             Spacer()
             Text("運動紀錄").font(.headline.bold()).foregroundStyle(.white)
             Spacer()
@@ -1012,6 +1030,19 @@ struct WorkoutHistoryView: View {
                     .font(.subheadline.bold())
                     .foregroundStyle(.white.opacity(0.9))
                 Spacer()
+                Menu {
+                    // Button("分享紀錄", systemImage: "square.and.arrow.up") {
+                    //     showShareComposer = true
+                    // }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white.opacity(0.85))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Color.white.opacity(0.14))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
             }
 
             histHeatmap

@@ -11,6 +11,7 @@ struct BodyManagementView: View {
     @State private var isTodayWeightLocked: Bool = false
     @State private var editingDietDate: Date? = nil
     @State private var showDietStatusEditor: Bool = false
+    @State private var showShareComposer: Bool = false
 
     private let bg = Color(red: 0.44, green: 0.62, blue: 0.58)
     private let card = Color(red: 0.31, green: 0.56, blue: 0.52)
@@ -98,6 +99,7 @@ struct BodyManagementView: View {
                         weekTrendCard
                         monthHeatmapCard
                         weightInputCard
+                        // shareButton
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 28)
@@ -119,20 +121,29 @@ struct BodyManagementView: View {
             }
             Button("取消", role: .cancel) {}
         }
+        .sheet(isPresented: $showShareComposer) {
+            ShareExportView(
+                title: "體態管理分享",
+                styleTitles: ["經典", "卡片", "簡約"],
+                renderPage: { style in
+                    AnyView(
+                        BodyManagementShareCard(
+                            style: style,
+                            dietDays: monthDietShareDays,
+                            today: state.todayTotalCalories,
+                            weekAvg: weekAverage,
+                            monthTotal: monthTotal
+                        )
+                    )
+                }
+            )
+        }
     }
 
     private var navBar: some View {
         HStack {
-            Button {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    state.showGlobalMenu = true
-                }
-            } label: {
-                Image(systemName: "line.3.horizontal")
-                    .font(.title3.bold())
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(.plain)
+            Spacer()
+                .frame(width: 40)
 
             Spacer()
 
@@ -331,6 +342,21 @@ struct BodyManagementView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
+    private var shareButton: some View {
+        Button {
+            showShareComposer = true
+        } label: {
+            Label("分享", systemImage: "square.and.arrow.up")
+                .font(.subheadline.bold())
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.14))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var weightInputCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("本日體重紀錄")
@@ -447,4 +473,12 @@ struct BodyManagementView: View {
         fmt.dateFormat = "yyyy-MM-dd"
         return fmt
     }()
+
+    private var monthDietShareDays: [ShareDietItem] {
+        monthDays.map { day in
+            let key = Self.heatmapDateFormatter.string(from: day.date)
+            let status = state.dietStatusByDate[key].flatMap(DietStatus.init(rawValue:))?.title ?? "-"
+            return ShareDietItem(date: day.date, statusText: status, calories: day.value)
+        }
+    }
 }

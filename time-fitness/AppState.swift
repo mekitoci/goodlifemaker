@@ -660,6 +660,12 @@ final class AppState {
         .init(id: 26, name: "胖胖仙子", englishName: "Chubby fairy",
               quote: "在我面前不用裝堅強，外型可愛討喜。", unlockTarget: 20,
               imagePath: "drawable/plant_26", lockImagePath: "drawable/plant_26_lock"),
+        .init(id: 27, name: "鋼鐵仙人掌", englishName: "Steel Cactus",
+              quote: "在荒蕪之中，依然倔強地綻放。", unlockTarget: 100,
+              imagePath: "drawable/plant_27", lockImagePath: "drawable/plant_27_lock"),
+        .init(id: 28, name: "虎尾蘭", englishName: "Snake plant",
+              quote: "不張揚的溫柔，剛剛好治癒人心。", unlockTarget: 200,
+              imagePath: "drawable/plant_28", lockImagePath: "drawable/plant_28_lock"),
     ]
 
     // MARK: - Navigation

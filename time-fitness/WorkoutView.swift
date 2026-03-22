@@ -577,7 +577,6 @@ private struct SummaryView: View {
                         .font(.subheadline.bold())
                         .foregroundStyle(.white.opacity(0.88))
                 }
-
                 Text("·")
                     .foregroundStyle(.white.opacity(0.4))
 

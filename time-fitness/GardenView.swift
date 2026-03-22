@@ -29,12 +29,30 @@ struct GardenContentView: View {
         ZStack {
             VStack(spacing: 0) {
                 // ── Header ──────────────────────────────────────────
-                Text("我的小樹圖鑑")
-                    .font(.title2.bold())
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 22)
-                    .padding(.bottom, 14)
+                HStack {
+                    Text("我的小樹圖鑑")
+                        .font(.title2.bold())
+                        .foregroundColor(.black)
+
+                    Spacer()
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            state.screen = .achievements
+                        }
+                    } label: {
+                        Image(systemName: "trophy.fill")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(Color(red: 0.86, green: 0.67, blue: 0.18))
+                            .frame(width: 34, height: 34)
+                            .background(Color.black.opacity(0.06))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 22)
+                .padding(.bottom, 14)
 
                 // ── Search bar ───────────────────────────────────────
             HStack(spacing: 8) {
@@ -156,6 +174,7 @@ private struct PlantDetailSheet: View {
     let onClose: () -> Void
     
     @Environment(AppState.self) private var state
+    @State private var showShareComposer: Bool = false
 
     private var statusText: String {
         state.plantSelectHint(for: plant)
@@ -244,11 +263,45 @@ private struct PlantDetailSheet: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!canPick)
+
+                // if state.isPlantUnlocked(plant.id) {
+                //     Button {
+                //         showShareComposer = true
+                //     } label: {
+                //         Label("分享已擁有花盆", systemImage: "square.and.arrow.up")
+                //             .font(.subheadline.bold())
+                //             .frame(maxWidth: .infinity)
+                //             .padding(.vertical, 12)
+                //             .background(Color.black.opacity(0.06))
+                //             .foregroundStyle(.black.opacity(0.75))
+                //             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                //     }
+                //     .buttonStyle(.plain)
+                // }
             }
             .padding(20)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .padding(.horizontal, 24)
+            .sheet(isPresented: $showShareComposer) {
+                ShareExportView(
+                    title: "花盆分享",
+                    styleTitles: ["經典", "卡片", "簡約"],
+                    renderPage: { style in
+                        AnyView(
+                            PlantOwnedShareCard(
+                                style: style,
+                                plantName: plant.name,
+                                quote: plant.quote,
+                                calories: state.todayTotalCalories,
+                                steps: state.todayStepCount,
+                                activities: state.todayActivityCount,
+                                imagePath: plant.imagePath
+                            )
+                        )
+                    }
+                )
+            }
     }
     
     private func metricPill(title: String, value: String) -> some View {

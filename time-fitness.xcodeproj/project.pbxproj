@@ -37,6 +37,7 @@
 		AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000007 /* GardenView.swift */; };
 		AA100001FFFFFFFF00000008 /* CloudSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000008 /* CloudSyncView.swift */; };
 		AA100001FFFFFFFF00000009 /* BodyManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000009 /* BodyManagementView.swift */; };
+		AA100001FFFFFFFF00000010 /* ShareExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001FFFFFFFF00000010 /* ShareExportView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -110,6 +111,7 @@
 		AA200001FFFFFFFF00000007 /* GardenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GardenView.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000008 /* CloudSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudSyncView.swift; sourceTree = "<group>"; };
 		AA200001FFFFFFFF00000009 /* BodyManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyManagementView.swift; sourceTree = "<group>"; };
+		AA200001FFFFFFFF00000010 /* ShareExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExportView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -191,6 +193,7 @@
 				AA200001FFFFFFFF00000007 /* GardenView.swift */,
 				AA200001FFFFFFFF00000008 /* CloudSyncView.swift */,
 				AA200001FFFFFFFF00000009 /* BodyManagementView.swift */,
+				AA200001FFFFFFFF00000010 /* ShareExportView.swift */,
 				2F509AD72F658D8B00750521 /* Preview Content */,
 			);
 			path = "time-fitness";
@@ -427,6 +430,7 @@
 				AA100001FFFFFFFF00000007 /* GardenView.swift in Sources */,
 				AA100001FFFFFFFF00000008 /* CloudSyncView.swift in Sources */,
 				AA100001FFFFFFFF00000009 /* BodyManagementView.swift in Sources */,
+				AA100001FFFFFFFF00000010 /* ShareExportView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -614,7 +618,12 @@
 				INFOPLIST_FILE = "time-fitness/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Potly;
 				INFOPLIST_KEY_CFBundleName = Potly;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Potly 會讀取您的今日步數與運動紀錄，用於首頁顯示活動統計。資料僅在本機使用，不會上傳。";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription = "Potly 會讀取您的今日步數與運動紀錄，用於首頁顯示活動統計。資料僅在本機使用，不會上傳。";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Potly 需要讀取您的步數與能量消耗數據，以便計算植物的成長進度並與您的健康紀錄同步。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Potly 需要將您的重訓消耗熱量寫入健康 App，幫助您完整記錄每日的體態變化。";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Potly 需要將分享圖片儲存到你的相簿。";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -650,7 +659,12 @@
 				INFOPLIST_FILE = "time-fitness/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Potly;
 				INFOPLIST_KEY_CFBundleName = Potly;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "Potly 會讀取您的今日步數與運動紀錄，用於首頁顯示活動統計。資料僅在本機使用，不會上傳。";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription = "Potly 會讀取您的今日步數與運動紀錄，用於首頁顯示活動統計。資料僅在本機使用，不會上傳。";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Potly 需要讀取您的步數與能量消耗數據，以便計算植物的成長進度並與您的健康紀錄同步。";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Potly 需要將您的重訓消耗熱量寫入健康 App，幫助您完整記錄每日的體態變化。";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Potly 需要將分享圖片儲存到你的相簿。";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

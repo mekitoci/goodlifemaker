@@ -10,14 +10,6 @@ struct HomeView: View {
             Color(red: 0.44, green: 0.62, blue: 0.58).ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HomeTopBar(onMenuTapped: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        state.showGlobalMenu = true
-                    }
-                })
-                .padding(.horizontal, 24)
-                .padding(.top, 10)
-
                 ZStack {
                     if state.homeTab == .tree {
                         VStack(spacing: 0) {
@@ -34,7 +26,7 @@ struct HomeView: View {
 
                             QuickStartSection()
                                 .padding(.horizontal, 20)
-                                .padding(.bottom, 36)
+                                .padding(.bottom, 100)
                         }
                         .transition(
                             .move(edge: .leading)
@@ -49,7 +41,7 @@ struct HomeView: View {
                             GardenContentView()
                                 .padding(.horizontal, 16)
                                 .padding(.top, 6)
-                                .padding(.bottom, 30)
+                                .padding(.bottom, 100)
                         }
                         .transition(
                             .move(edge: .trailing)
@@ -76,55 +68,6 @@ struct HomeView: View {
                  : state.switchPotPromptMessage)
         }
 
-    }
-}
-
-// MARK: - HomeTopBar
-
-private struct HomeTopBar: View {
-    @Environment(AppState.self) private var state
-    let onMenuTapped: () -> Void
-
-    var body: some View {
-        HStack {
-            // 左：漢堡選單
-            Button(action: onMenuTapped) {
-                Image(systemName: "line.3.horizontal")
-                    .font(.title3.bold())
-                    .foregroundStyle(.white)
-            }
-            .buttonStyle(.plain)
-            .frame(width: 44)
-
-            Spacer()
-
-            // 中：小樹 / 花園 切換
-            HStack(spacing: 0) {
-                ForEach([HomeTab.tree, HomeTab.garden], id: \.self) { tab in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.35)) { state.homeTab = tab }
-                    } label: {
-                        Text(tab == .tree ? "小樹" : "花園")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(.black.opacity(state.homeTab == tab ? 0.85 : 0.35))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 2)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.vertical, 8).padding(.horizontal, 10)
-            .frame(width: 160)
-            .background(.white.opacity(0.9))
-            .clipShape(Capsule())
-            .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
-
-            Spacer()
-
-            // 右側留白，維持置中平衡
-            Spacer()
-                .frame(width: 44)
-        }
     }
 }
 

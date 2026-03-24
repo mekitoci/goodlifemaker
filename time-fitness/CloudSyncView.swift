@@ -274,7 +274,7 @@ struct CloudSyncSheet: View {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
             let data = try encoder.encode(payload)
-            let fileName = "potly-backup-\(Int(Date().timeIntervalSince1970)).json"
+            let fileName = "SetRest-backup-\(Int(Date().timeIntervalSince1970)).json"
             setStatus("上傳至 Google Drive...")
             let fileID = try await service.uploadBackup(
                 fileName: fileName,
@@ -340,7 +340,7 @@ struct CloudSyncSheet: View {
                             Text("Google Drive")
                                 .font(.headline.bold())
                                 .foregroundStyle(.white)
-                            Text("先登入 Google 並授權 Drive 權限，系統會自動建立路徑 `/Log/Potly/` 存放備份檔。")
+                            Text("先登入 Google 並授權 Drive 權限，系統會自動建立路徑 `/Log/SetRest/` 存放備份檔。")
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.86))
                                 .fixedSize(horizontal: false, vertical: true)
@@ -395,7 +395,7 @@ struct CloudSyncSheet: View {
                             Button {
                                 Task { await uploadToDrive() }
                             } label: {
-                                Label("匯出全部資料到 Google Drive", systemImage: "arrow.up.doc.fill")
+                                Label("備份資料", systemImage: "arrow.up.doc.fill")
                                     .font(.subheadline.bold())
                                     .foregroundStyle(Color(red: 0.20, green: 0.40, blue: 0.36))
                                     .frame(maxWidth: .infinity)
@@ -409,7 +409,7 @@ struct CloudSyncSheet: View {
                             Button {
                                 Task { await restoreFromDrive() }
                             } label: {
-                                Label("從 Google Drive 下載並還原", systemImage: "arrow.down.doc.fill")
+                                Label("還原資料", systemImage: "arrow.down.doc.fill")
                                     .font(.subheadline.bold())
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity)
@@ -477,7 +477,8 @@ struct CloudSyncSheet: View {
 }
 
 private final class GoogleDriveService {
-    private let potlyFolderIDKey = "google_drive_potly_folder_id"
+    private let setRestFolderIDKey = "google_drive_setrest_folder_id"
+    private let legacyPotlyFolderIDKey = "google_drive_potly_folder_id"
 
     private enum DriveError: LocalizedError {
         case sdkMissing
@@ -495,7 +496,7 @@ private final class GoogleDriveService {
             case .notConfigured:
                 return "請先在專案設定好 GoogleSignIn（包含 GoogleService-Info.plist）。"
             case .noBackupFile:
-                return "在 /Log/Potly 找不到備份檔。"
+                return "在 /Log/SetRest 找不到備份檔。"
             case .apiError(let msg):
                 return msg
             }
@@ -635,25 +636,29 @@ private final class GoogleDriveService {
         return try await createFolder(name: name, parentID: parentID)
     }
 
-    private func ensurePotlyFolderID() async throws -> String {
-        if let cached = UserDefaults.standard.string(forKey: potlyFolderIDKey), !cached.isEmpty {
+    private func ensureSetRestFolderID() async throws -> String {
+        if let cached = UserDefaults.standard.string(forKey: setRestFolderIDKey), !cached.isEmpty {
             return cached
         }
+        if let legacy = UserDefaults.standard.string(forKey: legacyPotlyFolderIDKey), !legacy.isEmpty {
+            UserDefaults.standard.set(legacy, forKey: setRestFolderIDKey)
+            return legacy
+        }
         let logID = try await ensureFolder(name: "Log", parentID: "root")
-        let potlyID = try await ensureFolder(name: "Potly", parentID: logID)
-        UserDefaults.standard.set(potlyID, forKey: potlyFolderIDKey)
-        return potlyID
+        let setRestID = try await ensureFolder(name: "SetRest", parentID: logID)
+        UserDefaults.standard.set(setRestID, forKey: setRestFolderIDKey)
+        return setRestID
     }
 
     func connectAndPrepareFolder() async throws -> String {
         _ = try await signInAndAuthorize()
-        _ = try await ensurePotlyFolderID()
-        return "/Log/Potly/"
+        _ = try await ensureSetRestFolderID()
+        return "/Log/SetRest/"
     }
 
     func uploadBackup(fileName: String, jsonData: Data) async throws -> String {
         _ = try await signInAndAuthorize()
-        let folderID = try await ensurePotlyFolderID()
+        let folderID = try await ensureSetRestFolderID()
 
         let file = GTLRDrive_File()
         file.name = fileName
@@ -671,7 +676,7 @@ private final class GoogleDriveService {
 
     func downloadLatestBackup() async throws -> Data {
         _ = try await signInAndAuthorize()
-        let folderID = try await ensurePotlyFolderID()
+        let folderID = try await ensureSetRestFolderID()
 
         let list = GTLRDriveQuery_FilesList.query()
         // 以資料夾內「最新修改時間」的 JSON 檔作為還原來源

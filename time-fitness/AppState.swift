@@ -4,6 +4,7 @@ import Observation
 import ActivityKit
 import SwiftData
 import HealthKit
+import AVFoundation
 
 
 enum AchievementMetric {
@@ -77,9 +78,23 @@ final class AppState {
     }
 
     private static let healthKitRequestedKey = "healthkit_requested_v1"
+    private static let restVolumeControlEnabledKey = "rest_volume_control_enabled_v1"
     private let healthStore = HKHealthStore()
+    private let audioSession = AVAudioSession.sharedInstance()
+    private var outputVolumeObserver: NSKeyValueObservation?
+    private var lastObservedOutputVolume: Float = AVAudioSession.sharedInstance().outputVolume
+    private var lastVolumeAdjustAt: Date = .distantPast
+    private let restVolumeStepSeconds: Int = 5
     private var healthKitRequested: Bool = UserDefaults.standard.bool(forKey: AppState.healthKitRequestedKey) {
         didSet { UserDefaults.standard.set(healthKitRequested, forKey: AppState.healthKitRequestedKey) }
+    }
+    var restVolumeControlEnabled: Bool = {
+        if UserDefaults.standard.object(forKey: AppState.restVolumeControlEnabledKey) == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: AppState.restVolumeControlEnabledKey)
+    }() {
+        didSet { UserDefaults.standard.set(restVolumeControlEnabled, forKey: AppState.restVolumeControlEnabledKey) }
     }
     private var lastHealthKitRefreshAt: Date = .distantPast
     private var lastHealthKitMinuteStamp: Int = -1
@@ -564,6 +579,65 @@ final class AppState {
         loadExercises()
         loadPlans()
         normalizePlantSelectionState()
+        setupRestVolumeControlObserver()
+    }
+
+    deinit {
+        outputVolumeObserver?.invalidate()
+    }
+
+    private func setupRestVolumeControlObserver() {
+        do {
+            try audioSession.setActive(true, options: [])
+        } catch {
+            // Volume observation is best effort only.
+        }
+
+        lastObservedOutputVolume = audioSession.outputVolume
+        outputVolumeObserver = audioSession.observe(\.outputVolume, options: [.new]) { [weak self] session, _ in
+            guard let self else { return }
+            self.handleVolumeButtonChange(newVolume: session.outputVolume)
+        }
+    }
+
+    private func handleVolumeButtonChange(newVolume: Float) {
+        defer { lastObservedOutputVolume = newVolume }
+        guard restVolumeControlEnabled else { return }
+        guard workoutPhase == .resting else { return }
+        guard isHeadphoneRouteActive else { return }
+        guard Date().timeIntervalSince(lastVolumeAdjustAt) > 0.15 else { return }
+
+        let delta = newVolume - lastObservedOutputVolume
+        guard abs(delta) > 0.0001 else { return }
+
+        adjustRestTimerByVolume(delta > 0 ? restVolumeStepSeconds : -restVolumeStepSeconds)
+        lastVolumeAdjustAt = Date()
+    }
+
+    private var isHeadphoneRouteActive: Bool {
+        audioSession.currentRoute.outputs.contains {
+            switch $0.portType {
+            case .headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE:
+                return true
+            default:
+                return false
+            }
+        }
+    }
+
+    private func adjustRestTimerByVolume(_ deltaSeconds: Int) {
+        if let start = restStartDate {
+            let elapsed = Int(Date().timeIntervalSince(start))
+            restTotalSeconds = min(900, max(0, restTotalSeconds + deltaSeconds))
+            remainingRestSeconds = max(0, restTotalSeconds - elapsed)
+        } else {
+            remainingRestSeconds = min(900, max(0, remainingRestSeconds + deltaSeconds))
+            restTotalSeconds = max(restTotalSeconds, remainingRestSeconds)
+        }
+
+        if remainingRestSeconds == 0 {
+            endRest()
+        }
     }
 
     private func normalizePlantSelectionState() {
@@ -811,8 +885,24 @@ final class AppState {
 
     var lastReps: Int = {
         let v = UserDefaults.standard.integer(forKey: "lastReps")
-        return v == 0 ? 10 : v
+        return v == 0 ? 8 : v
     }() { didSet { UserDefaults.standard.set(lastReps, forKey: "lastReps") } }
+
+    private var exerciseMaxWeightKgByName: [String: Double] = {
+        guard
+            let data = UserDefaults.standard.data(forKey: "exerciseMaxWeightByName"),
+            let decoded = try? JSONDecoder().decode([String: Double].self, from: data)
+        else {
+            return [:]
+        }
+        return decoded
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(exerciseMaxWeightKgByName) {
+                UserDefaults.standard.set(data, forKey: "exerciseMaxWeightByName")
+            }
+        }
+    }
 
     var weightUnitRaw: String = {
         UserDefaults.standard.string(forKey: "weightUnitRaw") ?? WeightUnit.kg.rawValue
@@ -821,13 +911,47 @@ final class AppState {
     // MARK: - Active workout session
 
     var selectedExercise: Exercise?
+    var isRestTimerOnlySession: Bool = false
     var currentSet: Int = 1
     var totalSets: Int = 4
+    var quickStartTotalSets: Int = {
+        let v = UserDefaults.standard.integer(forKey: "quickStartTotalSets")
+        return v == 0 ? 4 : max(1, v)
+    }() {
+        didSet { UserDefaults.standard.set(max(1, quickStartTotalSets), forKey: "quickStartTotalSets") }
+    }
+    var quickStartRestSeconds: Int = {
+        let v = UserDefaults.standard.integer(forKey: "quickStartRestSeconds")
+        return v == 0 ? 90 : max(10, v)
+    }() {
+        didSet { UserDefaults.standard.set(max(10, quickStartRestSeconds), forKey: "quickStartRestSeconds") }
+    }
+    var quickStartWeightKg: Double = {
+        (UserDefaults.standard.object(forKey: "quickStartWeightKg") as? Double) ?? 0
+    }() {
+        didSet { UserDefaults.standard.set(max(0, quickStartWeightKg), forKey: "quickStartWeightKg") }
+    }
+    var quickStartActionName: String = {
+        UserDefaults.standard.string(forKey: "quickStartActionName") ?? ""
+    }() {
+        didSet {
+            UserDefaults.standard.set(quickStartActionName, forKey: "quickStartActionName")
+            let name = quickStartActionName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let maxW = maxWeightKg(forExerciseName: name) {
+                quickStartWeightKg = maxW
+            }
+        }
+    }
+    var quickStartExerciseIDRaw: String = {
+        UserDefaults.standard.string(forKey: "quickStartExerciseIDRaw") ?? ""
+    }() {
+        didSet { UserDefaults.standard.set(quickStartExerciseIDRaw, forKey: "quickStartExerciseIDRaw") }
+    }
     var currentSetStartTime: Date = .now
     var weightKg: Double = 0
     var editingWeight: Bool = false
     var weightInputText: String = ""
-    var selectedReps: Int = 10
+    var selectedReps: Int = 8
     var remainingRestSeconds: Int = 0
     private var restStartDate: Date? = nil
     private var restTotalSeconds: Int = 0
@@ -873,6 +997,31 @@ final class AppState {
         let v = weightValue(fromKg: kg)
         let rounded = (v.rounded(.down) == v) ? String(Int(v)) : String(format: "%.1f", v)
         return "\(rounded) \(weightUnit == .kg ? "kg" : "lb")"
+    }
+
+    private func normalizedExerciseNameKey(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    func maxWeightKg(forExerciseName name: String) -> Double? {
+        let key = normalizedExerciseNameKey(name)
+        guard !key.isEmpty else { return nil }
+        return exerciseMaxWeightKgByName[key]
+    }
+
+    func suggestedWeightKg(forExerciseName name: String, fallback: Double = 0) -> Double {
+        max(maxWeightKg(forExerciseName: name) ?? 0, max(0, fallback))
+    }
+
+    func recordMaxWeight(forExerciseName name: String, weightKg: Double) {
+        let key = normalizedExerciseNameKey(name)
+        guard !key.isEmpty else { return }
+        let weight = max(0, weightKg)
+        guard weight > 0 else { return }
+        let existing = exerciseMaxWeightKgByName[key] ?? 0
+        if weight > existing {
+            exerciseMaxWeightKgByName[key] = weight
+        }
     }
     
     func plantCount(for plantID: Int) -> Int {
@@ -984,6 +1133,14 @@ final class AppState {
     var quickStartExercise: Exercise? {
         if lastExerciseName.isEmpty { return exercises.first }
         return exercises.first(where: { $0.name == lastExerciseName }) ?? exercises.first
+    }
+
+    var quickStartSelectedExercise: Exercise? {
+        if let id = UUID(uuidString: quickStartExerciseIDRaw),
+           let ex = exercises.first(where: { $0.id == id }) {
+            return ex
+        }
+        return nil
     }
 
     var hasWorkoutToday: Bool {
@@ -1099,31 +1256,28 @@ final class AppState {
         _ exercise: Exercise,
         totalSetsOverride: Int? = nil,
         weightKgOverride: Double? = nil,
-        repsOverride: Int? = nil
+        repsOverride: Int? = nil,
+        restSecondsOverride: Int? = nil,
+        requirePlant: Bool = true,
+        restTimerOnly: Bool = false
     ) {
-        // 未選盆栽或已達 100% 必須換盆時，不可開始運動
-        guard hasSelectedPlant else {
-            switchPotPromptMessage = "請先到花園選擇要栽培的盆栽，才能開始運動。"
-            showSwitchPotPrompt = true
-            homeTab = .garden
-            screen = .home
-            return
-        }
-        guard !mustSwitchPot else {
-            switchPotPromptMessage = "當前盆栽已達 100%，請先到花園選擇其他花盆後再開始運動。"
-            showSwitchPotPrompt = true
-            homeTab = .garden
-            screen = .home
-            return
+        var sessionExercise = exercise
+        if let restSecondsOverride {
+            sessionExercise.restSeconds = max(10, restSecondsOverride)
         }
 
-        selectedExercise = exercise
+        selectedExercise = sessionExercise
+        isRestTimerOnlySession = restTimerOnly
         currentSet       = 1
-        totalSets        = max(1, totalSetsOverride ?? exercise.defaultSets)
+        totalSets        = max(1, totalSetsOverride ?? sessionExercise.defaultSets)
         if let weightKgOverride {
             weightKg = max(0, weightKgOverride)
         } else {
-            weightKg = (lastExerciseName == exercise.name) ? lastWeight : max(0, exercise.defaultWeightKg)
+            if let maxW = maxWeightKg(forExerciseName: sessionExercise.name) {
+                weightKg = maxW
+            } else {
+                weightKg = (lastExerciseName == sessionExercise.name) ? lastWeight : max(0, sessionExercise.defaultWeightKg)
+            }
         }
         if let repsOverride {
             selectedReps = max(1, repsOverride)
@@ -1139,6 +1293,70 @@ final class AppState {
         screen             = .workout
     }
 
+    func startFocusedRestTimerWorkout() {
+        if let ex = quickStartSelectedExercise {
+            let prefWeight = suggestedWeightKg(forExerciseName: ex.name, fallback: max(quickStartWeightKg, ex.defaultWeightKg))
+            let exercise = Exercise(
+                id: ex.id,
+                name: ex.name,
+                muscleGroup: ex.muscleGroup,
+                defaultSets: quickStartTotalSets,
+                restSeconds: quickStartRestSeconds,
+                defaultWeightKg: prefWeight
+            )
+            startExercise(
+                exercise,
+                totalSetsOverride: quickStartTotalSets,
+                weightKgOverride: prefWeight,
+                repsOverride: lastReps,
+                restSecondsOverride: quickStartRestSeconds,
+                requirePlant: false,
+                restTimerOnly: false
+            )
+            return
+        }
+
+        let customActionName = quickStartActionName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !customActionName.isEmpty {
+            let prefWeight = suggestedWeightKg(forExerciseName: customActionName, fallback: quickStartWeightKg)
+            let exercise = Exercise(
+                name: customActionName,
+                muscleGroup: "自訂",
+                defaultSets: quickStartTotalSets,
+                restSeconds: quickStartRestSeconds,
+                defaultWeightKg: prefWeight
+            )
+            startExercise(
+                exercise,
+                totalSetsOverride: quickStartTotalSets,
+                weightKgOverride: prefWeight,
+                repsOverride: lastReps,
+                restSecondsOverride: quickStartRestSeconds,
+                requirePlant: false,
+                restTimerOnly: false
+            )
+            return
+        }
+
+        let exercise = Exercise(
+            name: "組間休息",
+            muscleGroup: "計時器",
+            defaultSets: quickStartTotalSets,
+            restSeconds: quickStartRestSeconds,
+            defaultWeightKg: max(0, quickStartWeightKg)
+        )
+
+        startExercise(
+            exercise,
+            totalSetsOverride: quickStartTotalSets,
+            weightKgOverride: max(0, quickStartWeightKg),
+            repsOverride: 8,
+            restSecondsOverride: quickStartRestSeconds,
+            requirePlant: false,
+            restTimerOnly: true
+        )
+    }
+
     func tapDone() {
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         // Use the planned reps (`selectedReps`) directly and continue the flow.
@@ -1151,17 +1369,22 @@ final class AppState {
         setRecords.append(SetRecord(setNumber: currentSet, reps: selectedReps, weight: weightKg, startedAt: currentSetStartTime))
         // 澆水改為「整個動作完成一次」才計算（不是每組）
 
-        lastExerciseName    = exercise.name
-        lastWeight          = weightKg
-        lastReps            = selectedReps
+        if !isRestTimerOnlySession {
+            lastExerciseName = exercise.name
+            lastWeight = weightKg
+            lastReps = selectedReps
+            recordMaxWeight(forExerciseName: exercise.name, weightKg: weightKg)
+        }
         lastWorkoutTimestamp = Date().timeIntervalSince1970
 
         // 若本次訓練有設定重量，回寫成該動作的預設重量
         // 之後再次開始同動作時會直接帶入。
-        if weightKg > 0,
+        if !isRestTimerOnlySession,
+           weightKg > 0,
            let idx = exercises.firstIndex(where: { $0.id == exercise.id }) {
-            exercises[idx].defaultWeightKg = weightKg
-            selectedExercise?.defaultWeightKg = weightKg
+            let maxWeight = max(weightKg, exercises[idx].defaultWeightKg, maxWeightKg(forExerciseName: exercise.name) ?? 0)
+            exercises[idx].defaultWeightKg = maxWeight
+            selectedExercise?.defaultWeightKg = maxWeight
         }
 
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -1169,12 +1392,8 @@ final class AppState {
         if currentSet >= totalSets {
             // 一個動作完成（例如 5 組）才算 1 次
             totalSetsCompleted += 1
+            pendingWaterGain = 0
 
-            // 一個動作完成才算 1 次澆水進度
-            let goalActions = Double(wateringGoalSets(for: selectedPlantID))
-            pendingWaterGain = (100.0 / max(goalActions, 1.0))
-
-            triggerWaterDropAnimation()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { self.workoutPhase = .summary }
         } else {
             currentSet += 1
@@ -1183,7 +1402,6 @@ final class AppState {
             let start = Date()
             restStartDate = start
             workoutPhase = .resting
-            triggerWaterDropAnimation()
             startRestLiveActivity(
                 exerciseName: exercise.name,
                 totalSeconds: exercise.restSeconds,
@@ -1319,13 +1537,7 @@ final class AppState {
         // 更新連續天數
         updateStreak()
 
-        plantHydration = min(plantHydration + pendingWaterGain, 100)
-        finalizePotIfNeeded()
-
-        withAnimation(.spring(duration: 0.6)) { plantScale = 1.10 }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            withAnimation(.spring(duration: 0.4)) { self.plantScale = 1.0 }
-        }
+        pendingWaterGain = 0
         resetSession()
         screen = .home
     }
@@ -1438,6 +1650,7 @@ final class AppState {
 
     func resetSession() {
         selectedExercise  = nil
+        isRestTimerOnlySession = false
         currentSet        = 1
         remainingRestSeconds = 0
         workoutPhase      = .training

@@ -8,7 +8,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>junchen.potly</string>
+			<string>junchen.setrest</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.723017969479-4p7g0qjj77iegl46m5e4fn2iimvq2j65</string>

@@ -7,313 +7,58 @@ struct HomeView: View {
 
     var body: some View {
         ZStack(alignment: .leading) {
-            Color(red: 0.44, green: 0.62, blue: 0.58).ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    Color(red: 0.09, green: 0.13, blue: 0.24),
+                    Color(red: 0.23, green: 0.20, blue: 0.45),
+                    Color(red: 0.14, green: 0.42, blue: 0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                ZStack {
-                    if state.homeTab == .tree {
-                        VStack(spacing: 0) {
-                            Spacer(minLength: 10)
-
-                            VStack(spacing: 28) {
-                                PlantNameRow()
-                                PlantRingCard()
-                                MotivationLabel()
-                            }
-                            .padding(.horizontal, 24)
-
-                            Spacer(minLength: 20)
-
-                            QuickStartSection()
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 100)
-                        }
-                        .transition(
-                            .move(edge: .leading)
-                                .combined(with: .opacity)
-                        )
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        RestTimerToolHeader()
+                        QuickStartSection()
+                        Spacer(minLength: 0)
                     }
-
-                    if state.homeTab == .garden {
-                        VStack {
-                            Spacer(minLength: 8)
-
-                            GardenContentView()
-                                .padding(.horizontal, 16)
-                                .padding(.top, 6)
-                                .padding(.bottom, 100)
-                        }
-                        .transition(
-                            .move(edge: .trailing)
-                                .combined(with: .opacity)
-                        )
-                    }
+                    .frame(maxWidth: 520)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 28)
+                    .padding(.bottom, 110)
                 }
+                .safeAreaPadding(.top, 6)
             }
-            .animation(.easeInOut(duration: 0.35), value: state.homeTab)
-        }
-        .alert("請更換花盆", isPresented: Binding(
-            get: { state.showSwitchPotPrompt },
-            set: { state.showSwitchPotPrompt = $0 }
-        )) {
-            Button("前往花園") {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    state.homeTab = .garden
-                }
-            }
-            Button("知道了", role: .cancel) {}
-        } message: {
-            Text(state.switchPotPromptMessage.isEmpty
-                 ? "當前盆栽已達 100%，請先選擇其他花盆。"
-                 : state.switchPotPromptMessage)
         }
 
     }
 }
 
-// MARK: - PlantNameRow
+// MARK: - Rest timer tool (home / tree tab)
 
-private struct PlantNameRow: View {
-    @Environment(AppState.self) private var state
-
+private struct RestTimerToolHeader: View {
     var body: some View {
-        VStack(spacing: 6) {
-            Text(state.hasSelectedPlant ? state.currentPlant.name : "尚未選擇花盆")
-                .font(.system(size: 38, weight: .black))
-                .foregroundStyle(.white.opacity(0.96))
-                .shadow(color: .black.opacity(0.18), radius: 2, y: 2)
-
-            Text(state.hasSelectedPlant
-                 ? "「\(state.currentPlant.quote)」"
-                 : "先前往花園選擇今天要栽培的花盆")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.75))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-// MARK: - PlantRingCard
-
-struct PlantRingCard: View {
-    @Environment(AppState.self) private var state
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(.white.opacity(0.55), lineWidth: 10)
-                .frame(width: 248, height: 248)
-
-            Circle()
-                .trim(from: 0.0, to: state.ringProgress)
-                .stroke(
-                    Color(red: 0.84, green: 0.90, blue: 0.25),
-                    style: StrokeStyle(lineWidth: 12, lineCap: .round)
+        HStack(alignment: .center) {
+            Text("Timer")
+                .font(.system(size: 34, weight: .black))
+                .foregroundStyle(.white)
+            Spacer()
+            Image(systemName: "timer.circle.fill")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.cyan.opacity(0.95), .mint.opacity(0.9)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-                .frame(width: 248, height: 248)
-                .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.8), value: state.ringProgress)
-
-            Circle()
-                .fill(.white.opacity(0.95))
-                .frame(width: 214, height: 214)
-
-            ringContent
-
-            // Knob dot that follows the ring tip
-            if state.hasSelectedPlant {
-                let angle = state.ringProgress * 2 * Double.pi - Double.pi / 2
-                Circle()
-                    .fill(Color(red: 0.84, green: 0.90, blue: 0.25))
-                    .frame(width: 22, height: 22)
-                    .overlay(Circle().stroke(.white, lineWidth: 3))
-                    .offset(x: 124 * cos(angle), y: 124 * sin(angle))
-                    .animation(.easeInOut(duration: 0.8), value: state.ringProgress)
-            }
         }
-    }
-
-    private var ringContent: some View {
-        VStack(spacing: 0) {
-            // 上方：百分比 + 進度
-            VStack(spacing: 3) {
-                Text(state.hasSelectedPlant ? "\(Int(state.plantHydration))%" : "--")
-                    .font(.system(size: 26, weight: .black))
-                    .foregroundStyle(.black)
-                Text(state.hasSelectedPlant
-                     ? "\(state.hydrationLevel)/\(state.currentPlant.unlockTarget)"
-                     : "請先選擇花盆")
-                    .font(.caption.bold())
-                    .foregroundStyle(.gray)
-            }
-            .padding(.top, 18)
-
-            // 中間彈性空間
-            Spacer()
-
-            // 花盆置中於剩餘空間
-            ZStack(alignment: .top) {
-                if state.hasSelectedPlant {
-                    DrawableImage(path: state.currentPlant.imagePath, fallbackColor: state.plantColor)
-                        .frame(width: 100, height: 100)
-                        .scaleEffect(state.plantScale)
-                        .animation(.spring(duration: 0.5, bounce: 0.4), value: state.plantScale)
-                } else {
-                    Image(systemName: "leaf.circle")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 86, height: 86)
-                        .foregroundStyle(Color(red: 0.44, green: 0.62, blue: 0.58).opacity(0.8))
-                }
-
-                if state.waterDropVisible, state.hasSelectedPlant {
-                    HStack(spacing: 6) {
-                        ForEach(0..<3, id: \.self) { _ in
-                            Image(systemName: "drop.fill")
-                                .font(.title3)
-                                .foregroundStyle(.cyan.opacity(0.85))
-                        }
-                    }
-                    .offset(y: -26)
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .top).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-                }
-            }
-
-            // 下方彈性空間（讓花盆不貼底）
-            Spacer()
-                .frame(minHeight: 14)
-        }
-        .frame(width: 180, height: 210)
-    }
-}
-
-// MARK: - MotivationLabel
-
-private struct MotivationLabel: View {
-    @Environment(AppState.self) private var state
-    @State private var quoteIndex: Int = 0
-    @State private var visible: Bool = true
-    @State private var activeQuotes: [String] = []
-
-    private let cycleTimer = Timer.publish(every: 10, on: .main, in: .common).autoconnect()
-
-    private static let pool: [(range: ClosedRange<Double>, quotes: [String])] = [
-        (0...14, [
-            "每一次訓練，都是對自己的承諾",
-            "開始永遠不嫌晚，今天就是最好的時機",
-            "改變從第一步開始",
-            "身體記得你每一次的付出"
-        ]),
-        (15...29, [
-            "小小的積累，終將成為巨大的改變",
-            "堅持不是天賦，而是選擇",
-            "你今天的努力，是明天的基礎",
-            "過程比結果更值得驕傲"
-        ]),
-        (30...49, [
-            "你已經走了三分之一，別讓自己後悔",
-            "節奏對了，剩下的就交給時間",
-            "不需要完美，只需要繼續",
-            "每次訓練都在重塑更好的你"
-        ]),
-        (50...69, [
-            "超過一半了，你比想像中更有毅力",
-            "持續的力量遠勝過短暫的爆發",
-            "你已經證明了自己能做到",
-            "中途是最難的地方，你已經過了"
-        ]),
-        (70...84, [
-            "終點就在前方，不要停下來",
-            "這段路不容易，但你一直在走",
-            "快到了，讓身體感受到那個瞬間",
-            "每一滴汗都值得"
-        ]),
-        (85...99, [
-            "差一點就完成了，再堅持一下",
-            "你能感受到植物在等待你",
-            "最後的衝刺，往往決定整段旅程",
-            "就快了，不要放棄在這裡"
-        ]),
-        (100...100, [
-            "完全解鎖，你做到了",
-            "從種子到大樹，見證了你的堅持",
-            "這段旅程值得記住",
-            "你的努力，植物都感受到了"
-        ])
-    ]
-
-    private func quotes(for hydration: Double) -> [String] {
-        let pct = hydration
-        return Self.pool.first(where: { $0.range.contains(pct) })?.quotes
-            ?? Self.pool.last!.quotes
-    }
-
-    var body: some View {
-        Group {
-            if visible {
-                Text(displayQuote)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.8))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: 40)
-                    .padding(.horizontal, 24)
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: 0.35), value: visible)
-        .onAppear {
-            syncQuotesWithHydration(resetIndex: true)
-        }
-        .onChange(of: state.plantHydration, initial: false) { _, _ in
-            syncQuotesWithHydration(resetIndex: false)
-        }
-        .onReceive(cycleTimer) { _ in
-            rotateQuote()
-        }
-    }
-
-    private var displayQuote: String {
-        if activeQuotes.isEmpty {
-            return quotes(for: state.plantHydration).first ?? ""
-        }
-        return activeQuotes[quoteIndex % activeQuotes.count]
-    }
-
-    private func syncQuotesWithHydration(resetIndex: Bool) {
-        let nextQuotes = quotes(for: state.plantHydration)
-        let changedPool = nextQuotes != activeQuotes
-        guard changedPool || activeQuotes.isEmpty || resetIndex else { return }
-
-        activeQuotes = nextQuotes
-        guard !activeQuotes.isEmpty else {
-            quoteIndex = 0
-            return
-        }
-
-        if resetIndex {
-            // 以當前秒數為初始 index，避免每次都從同一句開始
-            quoteIndex = Int(Date().timeIntervalSince1970) % activeQuotes.count
-        } else {
-            quoteIndex = quoteIndex % activeQuotes.count
-        }
-
-        visible = true
-    }
-
-    private func rotateQuote() {
-        guard visible else { return }
-        guard activeQuotes.count > 1 else { return }
-
-        withAnimation(.easeInOut(duration: 0.35)) { visible = false }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40) {
-            quoteIndex = (quoteIndex + 1) % activeQuotes.count
-            withAnimation(.easeInOut(duration: 0.35)) { visible = true }
-        }
+        .padding(.horizontal, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -321,213 +66,491 @@ private struct MotivationLabel: View {
 
 private struct QuickStartSection: View {
     @Environment(AppState.self) private var state
+    @State private var showExercisePicker: Bool = false
+    @State private var pickerMode: ExercisePickerMode = .muscleGroups
+    @State private var selectedMuscleGroup: String? = nil
+    @State private var quickAddExerciseName: String = ""
+    @State private var exerciseSearchText: String = ""
 
-    var body: some View {
-        VStack(spacing: 12) {
-            // 若有菜單正在執行，顯示菜單當前動作卡
-            if let planItem = state.activePlanItem,
-               let ex = state.exercises.first(where: { $0.id == planItem.exerciseID }) {
-                planItemCard(item: planItem, exercise: ex)
-            } else {
-                // 今日狀態摘要卡
-                todayStatsCard
-            }
-
-            // 底部雙按鈕：選擇動作 / 選擇菜單（各一半）
-            HStack(spacing: 10) {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        state.screen = .dictionary
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text("選擇動作")
-                            .font(.headline.bold())
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.subheadline)
-                    }
-                    .foregroundStyle(.white.opacity(0.9))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 15)
-                    .background(.white.opacity(0.18))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        state.screen = .workoutPlan
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        DrawableImage(path: "drawable/task", fallbackColor: .white.opacity(0.7))
-                            .frame(width: 16, height: 16)
-                        Text("選擇菜單")
-                            .font(.headline.bold())
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.subheadline)
-                    }
-                    .foregroundStyle(.white.opacity(0.9))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 15)
-                    .background(.white.opacity(0.18))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .onAppear {
-            state.refreshHealthKitTodayStatsIfNeeded(force: true)
-        }
+    private enum ExercisePickerMode {
+        case muscleGroups
+        case exercises
     }
 
-    // 菜單執行中的卡片
-    private func planItemCard(item: WorkoutPlanItem, exercise: Exercise) -> some View {
-        Button { state.startExercise(exercise) } label: {
-            HStack(spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 5) {
-                        DrawableImage(path: "drawable/task", fallbackColor: .white.opacity(0.7))
-                            .frame(width: 13, height: 13)
-                        Text("菜單第 \(state.activePlanIndex + 1) 個")
-                            .font(.caption.bold())
-                            .foregroundStyle(.white.opacity(0.75))
+    var body: some View {
+        focusRestTimerCard
+            .sheet(isPresented: $showExercisePicker) {
+                NavigationStack {
+                    Group {
+                        if pickerMode == .muscleGroups {
+                            muscleGroupPicker
+                        } else {
+                            exercisePickerList
+                        }
                     }
-                    Text(exercise.name)
-                        .font(.title2.bold())
-                        .foregroundStyle(.white)
-                    Text("\(item.sets) 組 · \(Int(item.targetWeightKg)) kg · 目標 \(item.targetReps) 下")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.75))
+                    .navigationTitle(pickerMode == .muscleGroups ? "選肌群" : (selectedMuscleGroup ?? "選動作"))
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            if pickerMode == .exercises {
+                                Button {
+                                    pickerMode = .muscleGroups
+                                } label: {
+                                    Image(systemName: "chevron.left")
+                                }
+                            }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("完成") { showExercisePicker = false }
+                        }
+                    }
                 }
-                Spacer()
-                Text("開始")
-                    .font(.title3.bold())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 20).padding(.vertical, 12)
-                    .background(.white.opacity(0.25))
-                    .clipShape(Capsule())
+                .toolbarColorScheme(.dark, for: .navigationBar)
+                .preferredColorScheme(.dark)
+                .onAppear {
+                    pickerMode = .muscleGroups
+                    selectedMuscleGroup = nil
+                    exerciseSearchText = ""
+                }
             }
-            .padding(18)
-            .background(Color(red: 0.25, green: 0.50, blue: 0.60))
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+    }
+
+    private var muscleGroupPicker: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 14) {
+                Text("先選肌群，再快速挑動作")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    state.quickStartActionName = ""
+                    state.quickStartExerciseIDRaw = ""
+                    showExercisePicker = false
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("不指定動作")
+                                .font(.headline.bold())
+                                .foregroundStyle(.white)
+                            Text("只使用組間休息計時")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
+                        Spacer()
+                        if state.quickStartSelectedExercise == nil {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.16), Color.white.opacity(0.08)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(.white.opacity(0.08), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    ForEach(muscleGroupOptions, id: \.self) { group in
+                        Button {
+                            selectedMuscleGroup = group
+                            pickerMode = .exercises
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(group)
+                                    .font(.title3.bold())
+                                Text("選擇")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white.opacity(0.68))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 84)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.16), Color.white.opacity(0.08)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(.white.opacity(0.08), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(16)
+        }
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.09, green: 0.13, blue: 0.24),
+                    Color(red: 0.23, green: 0.20, blue: 0.45),
+                    Color(red: 0.14, green: 0.42, blue: 0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+    }
+
+    private var exercisePickerList: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.white.opacity(0.7))
+                TextField("搜尋動作", text: $exerciseSearchText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(.white.opacity(0.14))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, 16)
+
+            HStack(spacing: 8) {
+                TextField("快速新增動作", text: $quickAddExerciseName)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .foregroundStyle(.white)
+                    .onSubmit { addExerciseQuickly() }
+                Button {
+                    addExerciseQuickly()
+                } label: {
+                    Text("新增")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.white.opacity(0.18))
+                        .clipShape(Capsule())
+                }
+                .disabled(quickAddExerciseName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(.white.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, 16)
+
+            if filteredExercisesByMuscleGroup.isEmpty {
+                Text("此肌群目前沒有動作")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 6)
+            } else {
+                List {
+                    ForEach(filteredExercisesByMuscleGroup) { ex in
+                        exerciseListRow(ex)
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    deleteExerciseFromPicker(ex)
+                                } label: {
+                                    Label("刪除", systemImage: "trash")
+                                }
+                            }
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .padding(.top, 16)
+        .padding(.bottom, 16)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(red: 0.09, green: 0.13, blue: 0.24),
+                    Color(red: 0.23, green: 0.20, blue: 0.45),
+                    Color(red: 0.14, green: 0.42, blue: 0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        )
+    }
+
+    private var focusRestTimerCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                setupStepperCard(
+                    title: "組數",
+                    value: "\(state.quickStartTotalSets)",
+                    unit: "組",
+                    onMinus: { state.quickStartTotalSets = max(1, state.quickStartTotalSets - 1) },
+                    onPlus: { state.quickStartTotalSets = min(20, state.quickStartTotalSets + 1) }
+                )
+                setupStepperCard(
+                    title: "休息",
+                    value: "\(state.quickStartRestSeconds)",
+                    unit: "秒",
+                    onMinus: { state.quickStartRestSeconds = max(10, state.quickStartRestSeconds - 10) },
+                    onPlus: { state.quickStartRestSeconds = min(300, state.quickStartRestSeconds + 10) }
+                )
+
+                setupStepperCard(
+                    title: "重量",
+                    value: quickWeightText,
+                    unit: "kg",
+                    onMinus: { state.quickStartWeightKg = max(0, state.quickStartWeightKg - 2.5) },
+                    onPlus: { state.quickStartWeightKg = min(500, state.quickStartWeightKg + 2.5) }
+                )
+
+                exerciseCard
+            }
+
+            Button {
+                state.startFocusedRestTimerWorkout()
+            } label: {
+                Text("開始")
+                    .font(.system(size: 30, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.30, green: 0.77, blue: 0.95),
+                                Color(red: 0.38, green: 0.50, blue: 0.98),
+                                Color(red: 0.58, green: 0.46, blue: 0.98)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var exerciseCard: some View {
+        Button {
+            showExercisePicker = true
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("動作")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.72))
+
+                Spacer(minLength: 10)
+
+                Text(state.quickStartSelectedExercise?.name ?? "選擇")
+                    .font(.system(size: 30, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+
+                Spacer(minLength: 10)
+
+                HStack(spacing: 6) {
+                    Image(systemName: "figure.strengthtraining.traditional")
+                    Text("切換")
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                }
+                .font(.subheadline.bold())
+                .foregroundStyle(.white.opacity(0.88))
+                .padding(.horizontal, 12)
+                .frame(height: 42)
+                .background(.white.opacity(0.14))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .padding(12)
+            .frame(height: 176)
+            .frame(maxWidth: .infinity)
+            .background(tileBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(.white.opacity(0.05), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
 
-    // 今日狀態摘要卡
-    private var todayStatsCard: some View {
-        let calorieBarProgress = min(max(state.todayTotalCalories / 900.0, 0.0), 1.0)
+    private func setupStepperCard(
+        title: String,
+        value: String,
+        unit: String,
+        onMinus: @escaping () -> Void,
+        onPlus: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white.opacity(0.72))
 
-        return HStack(spacing: 12) {
-            // 左側：消耗主資訊
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 6) {
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.orange.opacity(0.95))
-                    Text("今日消耗")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.86))
-                }
+            Spacer(minLength: 8)
 
-                Spacer(minLength: 8)
-
-                Text("\(Int(state.todayTotalCalories)) kcal")
-                    .font(.system(size: 21, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .minimumScaleFactor(0.7)
-                    .contentTransition(.numericText())
-
-                Spacer(minLength: 10)
-
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(.white.opacity(0.16))
-                            .frame(height: 10)
-                        if calorieBarProgress > 0 {
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.orange.opacity(0.7), .yellow, .orange.opacity(0.7)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: proxy.size.width * calorieBarProgress, height: 10)
-                        }
-                    }
-                }
-                .frame(height: 10)
-                .animation(.easeInOut(duration: 0.8), value: state.todayTotalCalories)
+            HStack(alignment: .lastTextBaseline, spacing: 6) {
+                Text(value).font(.system(size: 56, weight: .black, design: .rounded))
+                    .foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.5)
+                Text(unit)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.60))
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
-            .frame(height: 134)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.white.opacity(0.07))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .frame(maxWidth: .infinity, alignment: .center)
 
-            // 右側雙列統計（更俐落）
-            VStack(spacing: 10) {
-                statRowTile(
-                    icon: "figure.walk",
-                    iconColor: Color(red: 0.86, green: 0.89, blue: 0.41),
-                    value: "\(state.todayStepCount)",
-                    label: "今日步數"
-                )
-                statRowTile(
-                    icon: "figure.run",
-                    iconColor: .orange.opacity(0.9),
-                    value: "\(state.todayActivityCount)",
-                    label: "今日運動次數"
-                )
+            Spacer(minLength: 12)
+
+            HStack(spacing: 18) {
+                Button(action: onMinus) {
+                    Image(systemName: "minus")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.16))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+
+                Button(action: onPlus) {
+                    Image(systemName: "plus")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.16))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
             }
-            .frame(width: 154)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(.white.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(12)
+        .frame(height: 176)
+        .frame(maxWidth: .infinity)
+        .background(tileBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(.white.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(.white.opacity(0.05), lineWidth: 1)
         )
     }
 
-    private func statRowTile(icon: String, iconColor: Color, value: String, label: String) -> some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 5) {
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(iconColor)
-                    Text(label)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.7))
-                }
+    private var tileBackground: some ShapeStyle {
+        LinearGradient(
+            colors: [
+                .white.opacity(0.11),
+                .white.opacity(0.06)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 
-                Text(value)
-                    .font(.system(size: 24, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                    .minimumScaleFactor(0.65)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
+    private var quickWeightText: String {
+        if state.quickStartWeightKg.rounded(.down) == state.quickStartWeightKg {
+            return "\(Int(state.quickStartWeightKg))"
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(height: 62)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        return String(format: "%.1f", state.quickStartWeightKg)
+    }
+
+    private var muscleGroupOptions: [String] {
+        ["胸", "肩", "腿", "手臂", "背"]
+    }
+
+    private var filteredExercisesByMuscleGroup: [Exercise] {
+        guard let selectedMuscleGroup else { return [] }
+        let list = state.exercises
+            .filter { $0.muscleGroup == selectedMuscleGroup }
+            .sorted { $0.name < $1.name }
+        let keyword = exerciseSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !keyword.isEmpty else { return list }
+        return list.filter { $0.name.localizedCaseInsensitiveContains(keyword) }
+    }
+
+    private func addExerciseQuickly() {
+        let name = quickAddExerciseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, let group = selectedMuscleGroup else { return }
+
+        let created = state.upsertExerciseFromPlan(
+            name: name,
+            muscleGroup: group,
+            defaultSets: max(1, state.quickStartTotalSets),
+            restSeconds: max(10, state.quickStartRestSeconds)
+        )
+
+        state.quickStartExerciseIDRaw = created.id.uuidString
+        state.quickStartWeightKg = state.suggestedWeightKg(
+            forExerciseName: created.name,
+            fallback: created.defaultWeightKg
+        )
+
+        quickAddExerciseName = ""
+        showExercisePicker = false
+    }
+
+    private func exerciseListRow(_ ex: Exercise) -> some View {
+        Button {
+            state.quickStartActionName = ""
+            state.quickStartExerciseIDRaw = ex.id.uuidString
+            state.quickStartWeightKg = state.suggestedWeightKg(
+                forExerciseName: ex.name,
+                fallback: ex.defaultWeightKg
+            )
+            showExercisePicker = false
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(ex.name)
+                        .font(.headline.bold())
+                        .foregroundStyle(.white)
+                    Text(ex.muscleGroup)
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+                Spacer()
+                if state.quickStartSelectedExercise?.id == ex.id {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.white)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.white.opacity(0.55))
+                }
+            }
+            .padding(14)
+            .background(.white.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func deleteExerciseFromPicker(_ ex: Exercise) {
+        if state.quickStartExerciseIDRaw == ex.id.uuidString {
+            state.quickStartExerciseIDRaw = ""
+        }
+        state.deleteExercise(ex)
     }
 }
 

@@ -7,8 +7,8 @@ private struct ShareImagePayload: Identifiable {
     let image: UIImage
 }
 
-/// 圓形品牌識別（potly.app），用於分享圖卡。
-struct PotlyBrandingBadge: View {
+/// 圓形品牌識別（SetRest），用於分享圖卡。
+struct SetRestBrandingBadge: View {
     var size: CGFloat = 48
 
     var body: some View {
@@ -28,7 +28,7 @@ struct PotlyBrandingBadge: View {
                     .stroke(Color.white.opacity(0.45), lineWidth: 2)
             )
 
-            Text("potly.app")
+            Text("SetRest")
                 .font(.system(size: size > 44 ? 16 : 14, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .tracking(0.3)
@@ -45,7 +45,7 @@ struct PotlyBrandingBadge: View {
                 )
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Potly, potly dot app")
+        .accessibilityLabel("SetRest")
     }
 }
 
@@ -223,12 +223,12 @@ struct ShareExportView: View {
                     if newStatus == .authorized || newStatus == .limited {
                         performPhotoSave(image)
                     } else {
-                        saveHint = "需要相簿權限：設定 → Potly → 照片 → 加入照片"
+                        saveHint = "需要相簿權限：設定 → SetRest → 照片 → 加入照片"
                     }
                 }
             }
         case .denied, .restricted:
-            saveHint = "需要相簿權限：設定 → Potly → 照片 → 加入照片"
+            saveHint = "需要相簿權限：設定 → SetRest → 照片 → 加入照片"
         @unknown default:
             saveHint = "無法寫入相簿，請檢查權限設定"
         }
@@ -273,15 +273,18 @@ struct WorkoutRecordShareCard: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            HStack {
-                Spacer()
+            ZStack {
                 Text("運動紀錄")
                     .font(.system(size: 52, weight: .bold))
                     .foregroundStyle(.white)
-                Spacer()
-                Text("\(records.count) 筆")
-                    .font(.title2.bold())
-                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                HStack {
+                    Spacer()
+                    Text("\(records.count) 筆")
+                        .font(.title2.bold())
+                        .foregroundStyle(.white.opacity(0.8))
+                }
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -290,7 +293,7 @@ struct WorkoutRecordShareCard: View {
                         .font(.system(size: 44, weight: .bold))
                         .foregroundStyle(.white)
                     Spacer()
-                    PotlyBrandingBadge(size: 40)
+                    SetRestBrandingBadge(size: 40)
                 }
                 LazyVGrid(columns: cols, spacing: 7) {
                     ForEach(week, id: \.self) { w in
@@ -566,7 +569,7 @@ struct PlantOwnedShareCard: View {
     let calories: Double
     let steps: Int
     let activities: Int
-    let imagePath: String
+    let plantID: Int
 
     private var progress: Double { min(1, Double(max(activities, 0)) / 5.0) }
     private let accent = Color(red: 0.78, green: 0.86, blue: 0.34)
@@ -582,7 +585,7 @@ struct PlantOwnedShareCard: View {
                 // ── 頂部品牌 ──────────────────────────────────────────
                 HStack {
                     Spacer()
-                    PotlyBrandingBadge(size: 40)
+                    SetRestBrandingBadge(size: 40)
                 }
                 .padding(.bottom, 14)
 
@@ -625,7 +628,7 @@ struct PlantOwnedShareCard: View {
                     Circle()
                         .fill(Color.white.opacity(0.95))
                         .padding(20)
-                    // 植物圖
+                    // 符號徽章
                     VStack(spacing: 6) {
                         Text("\(Int(progress * 100))%")
                             .font(.system(size: 64, weight: .black))
@@ -633,9 +636,11 @@ struct PlantOwnedShareCard: View {
                         Text("\(activities)/5")
                             .font(.title2.bold())
                             .foregroundStyle(.black.opacity(0.4))
-                        DrawableImage(path: imagePath, fallbackColor: .gray)
-                            .scaledToFit()
-                            .frame(width: 180, height: 180)
+                        PlantSymbolBadge(
+                            plantID: plantID,
+                            isUnlocked: true,
+                            size: 170
+                        )
                     }
                 }
                 .frame(width: 390, height: 390)
@@ -678,7 +683,7 @@ struct PlantOwnedShareCard: View {
 
                 // ── 品牌 footer ───────────────────────────────────────
                 HStack {
-                    Text("#potly  #potly.app")
+                    Text("#SetRest")
                         .font(.subheadline.bold())
                         .foregroundStyle(.white.opacity(0.72))
                     Spacer()

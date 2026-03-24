@@ -5,7 +5,7 @@ import GoogleSignIn
 #endif
 
 @main
-struct PotlyApp: App {
+struct SetRestApp: App {
 
     var body: some Scene {
         WindowGroup {

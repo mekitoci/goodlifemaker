@@ -100,21 +100,21 @@ struct ContentView: View {
     private func sceneOrder(screen: AppScreen, homeTab: HomeTab) -> Int {
         switch screen {
         case .home:
-            return homeTab == .tree ? 0 : 1
+            return 0
         case .workoutHistory:
-            return 2
+            return 1
         case .bodyManagement:
             return 3
         case .dictionary:
-            return 2
+            return 3
         case .workout:
-            return 2
+            return 3
         case .workoutPlan:
-            return 2
+            return 3
         case .achievements:
-            return 1
+            return 3
         case .settings:
-            return 4
+            return 2
         }
     }
 
@@ -133,26 +133,15 @@ private struct GlobalBottomDock: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            dockIcon("leaf.fill", selected: state.screen == .home && state.homeTab == .tree) {
+            dockIcon("timer", selected: state.screen == .home) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     state.screen = .home
                     state.homeTab = .tree
                 }
             }
-            dockIcon("basket.fill", selected: state.screen == .home && state.homeTab == .garden) {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    state.screen = .home
-                    state.homeTab = .garden
-                }
-            }
             dockIcon("chart.bar.fill", selected: state.screen == .workoutHistory) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     state.screen = .workoutHistory
-                }
-            }
-            dockIcon("figure.run", selected: state.screen == .bodyManagement) {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    state.screen = .bodyManagement
                 }
             }
             dockIcon("gearshape.fill", selected: state.screen == .settings) {
@@ -161,7 +150,7 @@ private struct GlobalBottomDock: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background(Color.black.opacity(0.32))
         .clipShape(Capsule())
@@ -452,16 +441,25 @@ struct SettingsView: View {
     @State private var showAboutAppSheet: Bool = false
     @State private var showCloudSyncSheet: Bool = false
 
-    private let pageBg = Color(red: 0.44, green: 0.62, blue: 0.58)
-    private let surface = Color(red: 0.95, green: 0.97, blue: 0.96)
-    private let textPrimary = Color(red: 0.14, green: 0.19, blue: 0.17)
-    private let textSecondary = Color(red: 0.43, green: 0.48, blue: 0.45)
-    private let accent = Color(red: 0.86, green: 0.89, blue: 0.41)
-    private let activeGreen = Color(red: 0.22, green: 0.66, blue: 0.46)
+    private let pageBg = Color(red: 0.10, green: 0.16, blue: 0.30)
+    private let surface = Color.white.opacity(0.92)
+    private let textPrimary = Color(red: 0.12, green: 0.17, blue: 0.26)
+    private let textSecondary = Color(red: 0.44, green: 0.49, blue: 0.58)
+    private let accent = Color(red: 0.31, green: 0.78, blue: 0.95)
+    private let activeGreen = Color(red: 0.44, green: 0.53, blue: 0.98)
 
     var body: some View {
         ZStack {
-            pageBg.ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    Color(red: 0.09, green: 0.13, blue: 0.24),
+                    Color(red: 0.23, green: 0.20, blue: 0.45),
+                    Color(red: 0.14, green: 0.42, blue: 0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack {
@@ -487,21 +485,74 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
-                        SettingsSectionCard(title: "語言", surface: surface) {
-                            SettingsInfoRow(
-                                icon: "globe.asia.australia.fill",
-                                title: "目前語言",
-                                subtitle: "目前僅提供單一語言",
-                                textPrimary: textPrimary,
-                                textSecondary: textSecondary
-                            ) {
-                                Text("繁體中文")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(.black)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(accent)
-                                    .clipShape(Capsule())
+                        SettingsSectionCard(title: "計時器", surface: surface) {
+                            VStack(spacing: 0) {
+                                FixedToggleRow(
+                                    icon: "airpodspro",
+                                    title: "耳機音量控制",
+                                    subtitle: "",
+                                    isOn: Binding(
+                                        get: { state.restVolumeControlEnabled },
+                                        set: { state.restVolumeControlEnabled = $0 }
+                                    ),
+                                    activeColor: activeGreen,
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary
+                                )
+
+                                Divider()
+                                    .overlay(Color.black.opacity(0.08))
+                                    .padding(.horizontal, 12)
+
+                                SettingsInfoRow(
+                                    icon: "list.number",
+                                    title: "預設組數",
+                                    subtitle: "",
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary
+                                ) {
+                                    compactAdjustControl(
+                                        value: "\(state.quickStartTotalSets)",
+                                        onMinus: { state.quickStartTotalSets = max(1, state.quickStartTotalSets - 1) },
+                                        onPlus: { state.quickStartTotalSets = min(20, state.quickStartTotalSets + 1) }
+                                    )
+                                }
+
+                                Divider()
+                                    .overlay(Color.black.opacity(0.08))
+                                    .padding(.horizontal, 12)
+
+                                SettingsInfoRow(
+                                    icon: "list.number",
+                                    title: "預設次數",
+                                    subtitle: "",
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary
+                                ) {
+                                    compactAdjustControl(
+                                        value: "\(state.selectedReps)",
+                                        onMinus: { state.selectedReps = max(1, state.selectedReps - 1) },
+                                        onPlus: { state.selectedReps = min(200, state.selectedReps + 1) }
+                                    )
+                                }
+
+                                Divider()
+                                    .overlay(Color.black.opacity(0.08))
+                                    .padding(.horizontal, 12)
+
+                                SettingsInfoRow(
+                                    icon: "timer",
+                                    title: "預設休息",
+                                    subtitle: "",
+                                    textPrimary: textPrimary,
+                                    textSecondary: textSecondary
+                                ) {
+                                    compactAdjustControl(
+                                        value: "\(state.quickStartRestSeconds)s",
+                                        onMinus: { state.quickStartRestSeconds = max(10, state.quickStartRestSeconds - 10) },
+                                        onPlus: { state.quickStartRestSeconds = min(300, state.quickStartRestSeconds + 10) }
+                                    )
+                                }
                             }
                         }
 
@@ -509,8 +560,8 @@ struct SettingsView: View {
                             VStack(spacing: 0) {
                                 FixedToggleRow(
                                     icon: "bell.badge.fill",
-                                    title: "推播通知",
-                                    subtitle: "完成訓練與花盆狀態提醒",
+                                    title: "通知",
+                                    subtitle: "",
                                     isOn: $notificationsOn,
                                     activeColor: activeGreen,
                                     textPrimary: textPrimary,
@@ -524,46 +575,21 @@ struct SettingsView: View {
                                 FixedToggleRow(
                                     icon: "speaker.wave.2.fill",
                                     title: "音效",
-                                    subtitle: "按鈕與回饋音效",
+                                    subtitle: "",
                                     isOn: $soundOn,
                                     activeColor: activeGreen,
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary
                                 )
-                            }
-                        }
 
-                        SettingsSectionCard(title: "雲端同步", surface: surface) {
-                            VStack(spacing: 0) {
-                                Button {
-                                    showCloudSyncSheet = true
-                                } label: {
-                                    SettingsInfoRow(
-                                        icon: "icloud.and.arrow.up.fill",
-                                        title: "Google Drive",
-                                        subtitle: "登入 Google 並管理 Drive 同步",
-                                        textPrimary: textPrimary,
-                                        textSecondary: textSecondary
-                                    ) {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "cloud.fill")
-                                                .font(.subheadline.bold())
-                                            Image(systemName: "chevron.right")
-                                                .font(.caption.bold())
-                                        }
-                                        .foregroundStyle(textSecondary.opacity(0.85))
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
+                                Divider()
+                                    .overlay(Color.black.opacity(0.08))
+                                    .padding(.horizontal, 12)
 
-                        SettingsSectionCard(title: "關於", surface: surface) {
-                            VStack(spacing: 0) {
                                 SettingsInfoRow(
                                     icon: "info.circle.fill",
                                     title: "版本",
-                                    subtitle: "Potly",
+                                    subtitle: "",
                                     textPrimary: textPrimary,
                                     textSecondary: textSecondary
                                 ) {
@@ -577,12 +603,33 @@ struct SettingsView: View {
                                     .padding(.horizontal, 12)
 
                                 Button {
+                                    showCloudSyncSheet = true
+                                } label: {
+                                    SettingsInfoRow(
+                                        icon: "icloud.and.arrow.up.fill",
+                                        title: "雲端備份",
+                                        subtitle: "",
+                                        textPrimary: textPrimary,
+                                        textSecondary: textSecondary
+                                    ) {
+                                        Image(systemName: "chevron.right")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(textSecondary.opacity(0.8))
+                                    }
+                                }
+                                .buttonStyle(.plain)
+
+                                Divider()
+                                    .overlay(Color.black.opacity(0.08))
+                                    .padding(.horizontal, 12)
+
+                                Button {
                                     showAboutAppSheet = true
                                 } label: {
                                     SettingsInfoRow(
-                                        icon: "hand.raised.fill",
-                                        title: "關於本 App",
-                                        subtitle: "資料與隱私說明",
+                                        icon: "lock.shield.fill",
+                                        title: "隱私權",
+                                        subtitle: "",
                                         textPrimary: textPrimary,
                                         textSecondary: textSecondary
                                     ) {
@@ -622,6 +669,40 @@ struct SettingsView: View {
             )
         }
     }
+
+    @ViewBuilder
+    private func compactAdjustControl(
+        value: String,
+        onMinus: @escaping () -> Void,
+        onPlus: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            Button(action: onMinus) {
+                Image(systemName: "minus")
+                    .font(.caption.bold())
+                    .foregroundStyle(textPrimary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.black.opacity(0.08))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+
+            Text(value)
+                .font(.subheadline.bold())
+                .foregroundStyle(textPrimary)
+                .frame(minWidth: 46)
+
+            Button(action: onPlus) {
+                Image(systemName: "plus")
+                    .font(.caption.bold())
+                    .foregroundStyle(textPrimary)
+                    .frame(width: 28, height: 28)
+                    .background(Color.black.opacity(0.08))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
 }
 
 private struct AboutAppSheet: View {
@@ -653,7 +734,7 @@ private struct AboutAppSheet: View {
                                     Text("資料與隱私")
                                         .font(.title3.bold())
                                         .foregroundStyle(.white)
-                                    Text("Potly 的資料只存在你的裝置")
+                                    Text("SetRest 的資料只存在你的裝置")
                                         .font(.caption)
                                         .foregroundStyle(.white.opacity(0.82))
                                 }
@@ -689,7 +770,7 @@ private struct AboutAppSheet: View {
                             aboutBullet(
                                 icon: "heart.text.square.fill",
                                 title: "HealthKit 權限範圍",
-                                body: "Potly 只讀取「今日步數」與「今日運動次數」用於畫面顯示，不會回寫。"
+                                body: "SetRest 只讀取「今日步數」與「今日運動次數」用於畫面顯示，不會回寫。"
                             )
                             aboutBullet(
                                 icon: "xmark.shield.fill",
@@ -843,9 +924,11 @@ private struct SettingsInfoRow<Trailing: View>: View {
                 Text(title)
                     .font(.subheadline.bold())
                     .foregroundStyle(textPrimary)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(textSecondary)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(textSecondary)
+                }
             }
 
             Spacer()
@@ -880,9 +963,11 @@ private struct FixedToggleRow: View {
                 Text(title)
                     .font(.subheadline.bold())
                     .foregroundStyle(textPrimary)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(textSecondary)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(textSecondary)
+                }
             }
 
             Spacer()
@@ -911,10 +996,9 @@ private struct FixedToggleRow: View {
 
 // MARK: - WorkoutHistoryView
 
-private let whBgColor     = Color(red: 0.44, green: 0.62, blue: 0.58)
-private let whCardColor   = Color(red: 0.31, green: 0.56, blue: 0.52)
-private let whAccentColor = Color(red: 0.86, green: 0.89, blue: 0.41)
-private let whAccentGreen = Color(red: 0.18, green: 0.62, blue: 0.43)
+private let whCardColor   = Color.white.opacity(0.10)
+private let whAccentColor = Color(red: 0.31, green: 0.78, blue: 0.95)
+private let whAccentGreen = Color(red: 0.44, green: 0.53, blue: 0.98)
 
 @MainActor
 struct WorkoutHistoryView: View {
@@ -948,7 +1032,16 @@ struct WorkoutHistoryView: View {
 
     var body: some View {
         ZStack {
-            whBgColor.ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    Color(red: 0.09, green: 0.13, blue: 0.24),
+                    Color(red: 0.23, green: 0.20, blue: 0.45),
+                    Color(red: 0.14, green: 0.42, blue: 0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
             VStack(spacing: 0) {
                 histNavBar.padding(.horizontal, 24).padding(.top, 10).padding(.bottom, 12)
                 if sessions.isEmpty {
@@ -1007,7 +1100,7 @@ struct WorkoutHistoryView: View {
             Spacer()
             Text("運動紀錄").font(.headline.bold()).foregroundStyle(.white)
             Spacer()
-            Text("\(recordsForSelectedDate.count) 筆").font(.subheadline).foregroundStyle(.white.opacity(0.7))
+            Text("\(recordsForSelectedDate.count)").font(.subheadline).foregroundStyle(.white.opacity(0.7))
         }
     }
 
@@ -1016,8 +1109,7 @@ struct WorkoutHistoryView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "chart.bar.xaxis").font(.system(size: 52)).foregroundStyle(.white.opacity(0.4))
-            Text("還沒有訓練紀錄").font(.headline.bold()).foregroundStyle(.white.opacity(0.7))
-            Text("完成第一次訓練後紀錄會出現在這裡").font(.subheadline).foregroundStyle(.white.opacity(0.5)).multilineTextAlignment(.center)
+            Text("還沒有紀錄").font(.headline.bold()).foregroundStyle(.white.opacity(0.72))
             Spacer()
         }.padding(.horizontal, 40)
     }
@@ -1046,10 +1138,6 @@ struct WorkoutHistoryView: View {
             }
 
             histHeatmap
-
-            Text("目前顯示：\(selectedDateText)")
-                .font(.caption.bold())
-                .foregroundStyle(.white.opacity(0.82))
         }
         .padding(16)
         .background(whCardColor)
@@ -1060,19 +1148,9 @@ struct WorkoutHistoryView: View {
     private var histHeatmap: some View {
         let data = histMonthData()
         let cal = Calendar.current
-        // 週標題
-        let weekLabels = ["日", "一", "二", "三", "四", "五", "六"]
         let cols = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
         return VStack(alignment: .leading, spacing: 6) {
-            // Weekday header
-            LazyVGrid(columns: cols, spacing: 4) {
-                ForEach(weekLabels, id: \.self) { w in
-                    Text(w).font(.caption2).foregroundStyle(.white.opacity(0.5))
-                        .frame(maxWidth: .infinity, alignment: .center)
-                }
-            }
-
             // Day cells
             let startWeekday = cal.component(.weekday, from: data.first?.date ?? .now) - 1
             LazyVGrid(columns: cols, spacing: 4) {
@@ -1087,7 +1165,7 @@ struct WorkoutHistoryView: View {
                             RoundedRectangle(cornerRadius: 5, style: .continuous)
                                 .stroke(
                                     Calendar.current.isDate(item.date, inSameDayAs: selectedDate)
-                                    ? Color.white.opacity(0.95)
+                                    ? whAccentGreen.opacity(0.95)
                                     : Color.clear,
                                     lineWidth: 2
                                 )
@@ -1103,16 +1181,6 @@ struct WorkoutHistoryView: View {
                 }
             }
 
-            // Legend
-            HStack(spacing: 6) {
-                Text("少").font(.caption2).foregroundStyle(.white.opacity(0.5))
-                ForEach([0, 1, 2, 3, 4], id: \.self) { i in
-                    RoundedRectangle(cornerRadius: 3).fill(heatColor(count: i))
-                        .frame(width: 14, height: 14)
-                }
-                Text("多").font(.caption2).foregroundStyle(.white.opacity(0.5))
-            }
-            .padding(.top, 4)
         }
     }
 
@@ -1124,9 +1192,9 @@ struct WorkoutHistoryView: View {
                     let sel = selectedMuscle == group
                     Button { withAnimation(.easeInOut(duration: 0.2)) { selectedMuscle = group } } label: {
                         Text(group).font(.subheadline.bold())
-                            .foregroundStyle(sel ? whCardColor : .white)
+                            .foregroundStyle(sel ? .white : .white.opacity(0.85))
                             .padding(.horizontal, 14).padding(.vertical, 7)
-                            .background(sel ? whAccentColor : Color.white.opacity(0.18))
+                            .background(sel ? whAccentGreen.opacity(0.98) : Color.white.opacity(0.12))
                             .clipShape(Capsule())
                     }.buttonStyle(.plain)
                 }
@@ -1139,16 +1207,13 @@ struct WorkoutHistoryView: View {
         VStack(spacing: 12) {
             if recordsForSelectedDate.isEmpty {
                 VStack(spacing: 6) {
-                    Text("當天沒有訓練紀錄")
+                    Text("當天沒有紀錄")
                         .font(.subheadline.bold())
                         .foregroundStyle(.white.opacity(0.72))
-                    Text("點上方趨勢圖可切換其他日期")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.58))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
-                .background(Color.white.opacity(0.08))
+                .background(Color.white.opacity(0.10))
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             } else {
                 LazyVStack(spacing: 10) {
@@ -1178,11 +1243,11 @@ struct WorkoutHistoryView: View {
 
     private func heatColor(count: Int) -> Color {
         switch count {
-        case 0:    return Color.white.opacity(0.1)
-        case 1:    return whAccentColor.opacity(0.35)
-        case 2:    return whAccentColor.opacity(0.6)
-        case 3:    return whAccentColor.opacity(0.82)
-        default:   return whAccentColor
+        case 0:    return Color.white.opacity(0.06)
+        case 1:    return whAccentGreen.opacity(0.35)
+        case 2:    return whAccentGreen.opacity(0.60)
+        case 3:    return whAccentGreen.opacity(0.82)
+        default:   return whAccentGreen.opacity(0.98)
         }
     }
 
@@ -1252,7 +1317,7 @@ private struct WorkoutHeatmapShareCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Potly 今日分享")
+                        Text("SetRest 今日分享")
                             .font(.system(size: 34, weight: .black))
                             .foregroundStyle(.white)
                         Text(dateRangeText)
@@ -1311,7 +1376,7 @@ private struct WorkoutHeatmapShareCard: View {
                         .font(.subheadline.bold())
                         .foregroundStyle(.white.opacity(0.85))
                     Spacer()
-                    Text("#potly")
+                    Text("#SetRest")
                         .font(.subheadline.bold())
                         .foregroundStyle(.white.opacity(0.65))
                 }
@@ -1555,7 +1620,7 @@ private struct ExerciseHistoryDetailView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                whBgColor.ignoresSafeArea()
+                Color(red: 0.10, green: 0.16, blue: 0.30).ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
@@ -1576,7 +1641,7 @@ private struct ExerciseHistoryDetailView: View {
                         .foregroundStyle(.white)
                 }
             }
-            .toolbarBackground(whBgColor, for: .navigationBar)
+            .toolbarBackground(Color(red: 0.10, green: 0.16, blue: 0.30), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
         }

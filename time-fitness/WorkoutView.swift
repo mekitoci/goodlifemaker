@@ -47,19 +47,16 @@ private struct TrainingView: View {
                     .padding(.top, 14)
 
                 Spacer()
-                if let name = state.selectedExercise?.name, !name.isEmpty {
-                    Text(name)
-                        .font(.headline.bold())
-                        .foregroundStyle(.white.opacity(0.92))
-                        .lineLimit(1)
-                        .padding(.horizontal, sidePadding)
-                        .padding(.bottom, 10)
-                }
+                Text("專注組間休息")
+                    .font(.headline.bold())
+                    .foregroundStyle(.white.opacity(0.92))
+                    .padding(.horizontal, sidePadding)
+                    .padding(.bottom, 10)
                 setCounter
                 Spacer()
 
                 VStack(spacing: 14) {
-                    infoCard
+                    sessionInfoCard
                     doneButton
                 }
                 .padding(.horizontal, sidePadding)
@@ -85,18 +82,20 @@ private struct TrainingView: View {
             }
             Spacer()
             Spacer()
-            Button {
-                state.finishExercise()
-            } label: {
-                Text("完成此動作")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(.white.opacity(0.22))
-                    .clipShape(Capsule())
+            if state.currentSet < state.totalSets {
+                Button {
+                    state.finishExercise()
+                } label: {
+                    Text("結束訓練")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.white.opacity(0.22))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -120,31 +119,88 @@ private struct TrainingView: View {
 
     // (removed legacy weightButton sheet presenter)
 
-    private var infoCard: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
+    private var sessionInfoCard: some View {
+        return VStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text("第 \(state.currentSet) 組 / 共 \(state.totalSets) 組")
                     .font(.subheadline.bold())
-                    .foregroundStyle(.white.opacity(0.9))
-                HStack(spacing: 10) {
-                    infoPill(icon: "scalemass.fill", text: state.weightText(fromKg: state.weightKg)) {
-                        state.weightInputText = String(Int(state.weightKg))
-                        state.editingWeight = true
-                    }
-                    infoPill(icon: "repeat", text: "\(state.selectedReps) 下") {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            state.workoutPhase = .repsPicker
-                        }
-                    }
-                }
-                if state.weightKg == 0 {
-                    Text("可先點重量設定本次負重")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.42))
-                        .padding(.leading, 2)
-                }
+                    .foregroundStyle(.white.opacity(0.92))
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: 12) {
+
+                Button {
+                    state.selectedReps = max(1, state.selectedReps - 1)
+                } label: {
+                    Image(systemName: "minus")
+                        .font(.title3.bold())
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.16))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+
+                Text("\(state.selectedReps)")
+                    .font(.system(size: 44, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(minWidth: 56, alignment: .center)
+
+                Button {
+                    state.selectedReps = min(200, state.selectedReps + 1)
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title3.bold())
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(.white.opacity(0.16))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 2)
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            HStack(spacing: 12) {
+                Button {
+                    state.weightKg = max(0, state.weightKg - 2.5)
+                } label: {
+                    Image(systemName: "minus")
+                        .font(.title3.bold())
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(.white.opacity(0.16))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+
+                VStack(spacing: 2) {
+                    Text("重量")
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.70))
+                    Text(state.weightText(fromKg: state.weightKg))
+                        .font(.system(size: 28, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                }
+                .frame(minWidth: 110, alignment: .center)
+
+                Button {
+                    state.weightKg = min(500, state.weightKg + 2.5)
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title3.bold())
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(.white.opacity(0.16))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 2)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -178,24 +234,6 @@ private struct TrainingView: View {
                     )
             }
         }
-    }
-
-    private func infoPill(icon: String, text: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.85))
-                Text(text)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white.opacity(0.92))
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.white.opacity(0.12))
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -340,18 +378,19 @@ private struct RestView: View {
                     .padding(.top, 18)
 
                 Spacer()
-                if let name = state.selectedExercise?.name, !name.isEmpty {
-                    Text(name)
-                        .font(.headline.bold())
-                        .foregroundStyle(.white.opacity(0.92))
-                        .lineLimit(1)
-                        .padding(.horizontal, sidePadding)
-                        .padding(.bottom, 10)
-                }
+                Text("組間休息中")
+                    .font(.headline.bold())
+                    .foregroundStyle(.white.opacity(0.92))
+                    .padding(.horizontal, sidePadding)
+                    .padding(.bottom, 10)
                 countdownSection
                 Spacer()
 
-                plantWateringCard
+                restWeightControlCard
+                    .padding(.horizontal, sidePadding)
+                    .padding(.bottom, 10)
+
+                restActionCard
                     .padding(.horizontal, sidePadding)
                     .padding(.bottom, 38)
             }
@@ -360,21 +399,26 @@ private struct RestView: View {
 
     private var navBar: some View {
         HStack {
-            Spacer()
-            Button { state.skipRest() } label: {
-                Text("跳過休息")
-                    .font(.subheadline.bold())
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    state.screen = .home
+                    state.resetSession()
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.headline.bold())
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .padding(10)
                     .background(.white.opacity(0.22))
-                    .clipShape(Capsule())
+                    .clipShape(Circle())
             }
+            Spacer()
         }
     }
 
     private var countdownSection: some View {
         VStack(spacing: 0) {
-            Text("第 \(state.currentSet) 組準備中")
+            Text("下一組：第 \(state.currentSet) 組")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(.white.opacity(0.78))
             Text("\(state.remainingRestSeconds)")
@@ -388,64 +432,64 @@ private struct RestView: View {
         }
     }
 
-    private var plantWateringCard: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 22)
-                .fill(.white.opacity(0.18))
-                .frame(height: 130)
-
-            HStack(spacing: 18) {
-                plantWithDrops
-                plantInfo
-            }
-            .padding(.horizontal, 20)
-        }
-    }
-
-    private var plantWithDrops: some View {
-        ZStack(alignment: .top) {
-            DrawableImage(path: state.currentPlant.imagePath, fallbackColor: state.plantColor)
-                .frame(width: 82, height: 82)
-                .scaleEffect(state.waterDropVisible ? 1.10 : 1.0)
-                .animation(.spring(duration: 0.4, bounce: 0.5), value: state.waterDropVisible)
-
-            if state.waterDropVisible {
-                HStack(spacing: 6) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        Image(systemName: "drop.fill")
-                            .font(.title3)
-                            .foregroundStyle(.cyan.opacity(0.9))
-                    }
-                }
-                .offset(y: -30)
-                .transition(.asymmetric(
-                    insertion: .scale.combined(with: .opacity),
-                    removal: .opacity
-                ))
-            }
-        }
-    }
-
-    private var plantInfo: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(state.currentPlant.name)
+    private var restActionCard: some View {
+        Button {
+            state.skipRest()
+        } label: {
+            Text("跳過休息")
                 .font(.headline.bold())
                 .foregroundStyle(.white)
-            Text("正在吸收汗水能量")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.82))
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.28)).frame(height: 8)
-                    Capsule()
-                        .fill(.cyan)
-                        .frame(width: geo.size.width * state.ringProgress, height: 8)
-                        .animation(.easeInOut(duration: 0.8), value: state.ringProgress)
-                }
-            }
-            .frame(height: 8)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(.white.opacity(0.16))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .buttonStyle(.plain)
+    }
+
+    private var restWeightControlCard: some View {
+        HStack(spacing: 14) {
+            Button {
+                state.weightKg = max(0, state.weightKg - 2.5)
+            } label: {
+                Image(systemName: "minus")
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.16))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            VStack(spacing: 2) {
+                Text("重量")
+                    .font(.caption.bold())
+                    .foregroundStyle(.white.opacity(0.72))
+                Text(state.weightText(fromKg: state.weightKg))
+                    .font(.system(size: 34, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+
+            Spacer()
+
+            Button {
+                state.weightKg = min(500, state.weightKg + 2.5)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.title3.bold())
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(.white.opacity(0.16))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(.white.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -511,8 +555,9 @@ private struct SummaryView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 0.42, green: 0.62, blue: 0.57),
-                    Color(red: 0.34, green: 0.55, blue: 0.52)
+                    Color(red: 0.10, green: 0.14, blue: 0.24),
+                    Color(red: 0.26, green: 0.22, blue: 0.48),
+                    Color(red: 0.16, green: 0.44, blue: 0.58)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -520,16 +565,16 @@ private struct SummaryView: View {
             .ignoresSafeArea()
 
             ScrollView {
-                VStack(spacing: 14) {
+                VStack(spacing: 12) {
                     completionHeroCard
                     summaryStatsCard
-                    paceTrendCard
                     setLog
                     finishButton
+                        .padding(.top, 6)
                         .padding(.bottom, 44)
                 }
                 .padding(.horizontal, sidePadding)
-                .padding(.top, 18)
+                .padding(.top, 22)
             }
         }
         .onAppear {
@@ -545,11 +590,11 @@ private struct SummaryView: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.12))
-                    .frame(width: 80, height: 80)
+                    .fill(Color.white.opacity(0.14))
+                    .frame(width: 84, height: 84)
 
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 44, weight: .bold))
+                    .font(.system(size: 46, weight: .bold))
                     .foregroundStyle(.white)
                     .scaleEffect(heroCheckAppear ? 1.0 : 0.5)
                     .opacity(heroCheckAppear ? 1.0 : 0.0)
@@ -558,43 +603,16 @@ private struct SummaryView: View {
 
             VStack(spacing: 5) {
                 Text("訓練完成")
-                    .font(.system(size: 28, weight: .black))
+                    .font(.system(size: 36, weight: .black))
                     .foregroundStyle(.white)
 
-                if let name = state.selectedExercise?.name {
-                    Text(name)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white.opacity(0.78))
-                        .lineLimit(1)
-                }
+                Text("\(state.setRecords.count) 組")
+                    .font(.title3.bold())
+                    .foregroundStyle(.white.opacity(0.8))
             }
-
-            HStack(spacing: 14) {
-                HStack(spacing: 5) {
-                    Image(systemName: "flame.fill")
-                        .foregroundStyle(.orange.opacity(0.9))
-                    Text("\(state.setRecords.count) 組完成")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white.opacity(0.88))
-                }
-                Text("·")
-                    .foregroundStyle(.white.opacity(0.4))
-
-                HStack(spacing: 5) {
-                    Image(systemName: "drop.fill")
-                        .foregroundStyle(.cyan.opacity(0.9))
-                    Text("+\(Int(state.pendingWaterGain))% 澆水")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.white.opacity(0.88))
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.09))
-            .clipShape(Capsule())
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
+        .padding(.vertical, 24)
         .padding(.horizontal, 14)
         .background(Color.white.opacity(0.14))
         .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
@@ -607,9 +625,9 @@ private struct SummaryView: View {
 
     private var summaryStatsCard: some View {
         HStack(spacing: 10) {
-            summaryMetricPill(title: "總訓練量", value: String(format: "%.0f kg", totalVolume))
-            summaryMetricPill(title: "最大重量", value: String(format: "%.1f kg", maxWeight))
-            summaryMetricPill(title: "平均次數", value: String(format: "%.1f 下", averageReps))
+            summaryMetricPill(title: "總訓練量", value: String(format: "%.0fkg", totalVolume))
+            summaryMetricPill(title: "最大重量", value: String(format: "%.1fkg", maxWeight))
+            summaryMetricPill(title: "平均次數", value: String(format: "%.1f下", averageReps))
         }
     }
 
@@ -619,7 +637,7 @@ private struct SummaryView: View {
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.62))
             Text(value)
-                .font(.subheadline.bold())
+                .font(.headline.bold())
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
@@ -692,7 +710,7 @@ private struct SummaryView: View {
                     }
                 }
             } else {
-                Text("點擊展開查看每組紀錄")
+                Text("點擊查看每組紀錄")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.62))
                     .padding(.horizontal, 2)
@@ -811,41 +829,26 @@ private struct SummaryView: View {
 
     private var finishButton: some View {
         VStack(spacing: 10) {
-            // 若菜單還有下一個動作
-            if state.hasNextPlanItem,
-               let next = state.activePlanQueue[safe: state.activePlanIndex + 1] {
-                Button {
-                    state.finishAndGoHome(modelContext: modelContext)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        state.advanceToNextPlanItem()
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.right.circle.fill")
-                        Text("繼續：\(next.exerciseName)")
-                            .font(.title3.bold())
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Color(red: 0.19, green: 0.49, blue: 0.59))
-                    .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
-                    .shadow(color: .black.opacity(0.18), radius: 10, y: 6)
-                }
-                .buttonStyle(.plain)
-            }
-
             Button {
                 state.clearActivePlan()
                 state.finishAndGoHome(modelContext: modelContext)
             } label: {
-                Text(state.hasNextPlanItem ? "回到花園" : "回到花園")
-                    .font(state.hasNextPlanItem ? .subheadline.bold() : .headline.bold())
+                Text("完成")
+                    .font(.title3.bold())
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Color(red: 0.28, green: 0.55, blue: 0.48)
-                        .opacity(state.hasNextPlanItem ? 0.72 : 1.0))
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.30, green: 0.77, blue: 0.95),
+                                Color(red: 0.38, green: 0.50, blue: 0.98),
+                                Color(red: 0.58, green: 0.46, blue: 0.98)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
                     .clipShape(RoundedRectangle(cornerRadius: cardRadius, style: .continuous))
                     .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
             }

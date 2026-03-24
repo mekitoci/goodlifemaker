@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 // MARK: - Exercise catalog
 
@@ -95,6 +96,89 @@ struct PlantCatalogEntry: Identifiable {
         quote: "先前往花園選擇今天要栽培的花盆", unlockTarget: 0,
         imagePath: "drawable/task", lockImagePath: "drawable/task"
     )
+}
+
+private let plantSymbolCatalog: [String] = [
+    "leaf.fill",
+    "tree.fill",
+    "camera.macro",
+    "sparkles",
+    "sun.max.fill",
+    "moon.stars.fill",
+    "drop.fill",
+    "flame.fill",
+    "bolt.fill",
+    "hare.fill",
+    "tortoise.fill",
+    "bird.fill",
+    "ladybug.fill",
+    "pawprint.fill",
+    "star.fill",
+    "heart.fill",
+    "diamond.fill",
+    "seal.fill",
+    "crown.fill",
+    "bell.fill",
+    "cloud.fill",
+    "wind",
+    "snowflake",
+    "rainbow",
+    "mountain.2.fill",
+    "globe.asia.australia.fill",
+    "fan.fill",
+    "atom"
+]
+
+private func symbolIndex(for plantID: Int) -> Int {
+    guard !plantSymbolCatalog.isEmpty else { return 0 }
+    return abs(plantID - 1) % plantSymbolCatalog.count
+}
+
+func plantSymbolName(for plantID: Int) -> String {
+    plantSymbolCatalog[symbolIndex(for: plantID)]
+}
+
+private func plantSymbolTint(for plantID: Int) -> Color {
+    let hues: [Double] = [0.34, 0.44, 0.54, 0.08, 0.16, 0.72, 0.88, 0.24]
+    return Color(hue: hues[abs(plantID) % hues.count], saturation: 0.62, brightness: 0.75)
+}
+
+struct PlantSymbolBadge: View {
+    let plantID: Int
+    let isUnlocked: Bool
+    var size: CGFloat = 86
+    var showLockOverlay: Bool = false
+
+    private var tint: Color {
+        plantSymbolTint(for: plantID)
+    }
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Circle()
+                .fill(isUnlocked ? tint.opacity(0.18) : Color.gray.opacity(0.16))
+                .overlay(
+                    Circle()
+                        .stroke(isUnlocked ? tint.opacity(0.65) : Color.gray.opacity(0.45), lineWidth: 2)
+                )
+                .frame(width: size, height: size)
+                .overlay(
+                    Image(systemName: isUnlocked ? plantSymbolName(for: plantID) : "lock.fill")
+                        .font(.system(size: size * 0.38, weight: .bold))
+                        .foregroundStyle(isUnlocked ? tint : Color.gray.opacity(0.9))
+                )
+
+            if showLockOverlay && !isUnlocked {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: max(11, size * 0.15), weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: size * 0.28, height: size * 0.28)
+                    .background(Color.black.opacity(0.62))
+                    .clipShape(Circle())
+                    .offset(x: 4, y: -4)
+            }
+        }
+    }
 }
 
 

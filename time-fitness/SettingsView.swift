@@ -64,6 +64,17 @@ struct SettingsView: View {
                             Text("1.0.0")
                                 .foregroundColor(.gray)
                         }
+                        Divider().background(Color.white.opacity(0.2))
+                        // TODO: 替換成你的實際隱私權政策網址
+                        Link(destination: URL(string: "https://your-privacy-policy-url.com")!) {
+                            HStack {
+                                Text("隱私權政策")
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 20)

@@ -30,7 +30,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2F509ACD2F658D8900750521"
-               BuildableName = "time-fitness.app"
+               BuildableName = "SetRest.app"
                BlueprintName = "time-fitness"
                ReferencedContainer = "container:time-fitness.xcodeproj">
             </BuildableReference>
@@ -61,7 +61,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2F509ACD2F658D8900750521"
-            BuildableName = "time-fitness.app"
+            BuildableName = "SetRest.app"
             BlueprintName = "time-fitness"
             ReferencedContainer = "container:time-fitness.xcodeproj">
          </BuildableReference>
@@ -97,7 +97,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2F509ACD2F658D8900750521"
-            BuildableName = "time-fitness.app"
+            BuildableName = "SetRest.app"
             BlueprintName = "time-fitness"
             ReferencedContainer = "container:time-fitness.xcodeproj">
          </BuildableReference>

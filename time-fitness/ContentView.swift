@@ -487,23 +487,6 @@ struct SettingsView: View {
                     VStack(spacing: 16) {
                         SettingsSectionCard(title: "計時器", surface: surface) {
                             VStack(spacing: 0) {
-                                FixedToggleRow(
-                                    icon: "airpodspro",
-                                    title: "耳機音量控制",
-                                    subtitle: "",
-                                    isOn: Binding(
-                                        get: { state.restVolumeControlEnabled },
-                                        set: { state.restVolumeControlEnabled = $0 }
-                                    ),
-                                    activeColor: activeGreen,
-                                    textPrimary: textPrimary,
-                                    textSecondary: textSecondary
-                                )
-
-                                Divider()
-                                    .overlay(Color.black.opacity(0.08))
-                                    .padding(.horizontal, 12)
-
                                 SettingsInfoRow(
                                     icon: "list.number",
                                     title: "預設組數",

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UIKit
+import BackgroundTasks
 #if canImport(GoogleSignIn)
 import GoogleSignIn
 #endif
@@ -9,7 +10,7 @@ import GoogleAPIClientForREST_Drive
 import GTMSessionFetcherCore
 #endif
 
-private struct AppBackupSetPayload: Codable {
+struct AppBackupSetPayload: Codable {
     var id: UUID
     var setNumber: Int
     var reps: Int
@@ -18,7 +19,7 @@ private struct AppBackupSetPayload: Codable {
     var supabaseID: String?
 }
 
-private struct AppBackupSessionPayload: Codable {
+struct AppBackupSessionPayload: Codable {
     var id: UUID
     var exerciseName: String
     var muscleGroup: String
@@ -31,11 +32,86 @@ private struct AppBackupSessionPayload: Codable {
     var isDirty: Bool
 }
 
-private struct AppBackupPayload: Codable {
+struct AppBackupPayload: Codable {
     var schemaVersion: Int = 2
     var exportedAt: Date
     var appState: AppState.LocalBackupSnapshot
     var workouts: [AppBackupSessionPayload]
+}
+
+// MARK: - BackupScheduler
+struct BackupScheduler {
+    static let taskID = "junchen.setrest.midnight-backup"
+    private static let lastBackupKey = "last_backup_date"
+    private static let autoBackupKey = "auto_backup_enabled"
+
+    static var lastBackupDate: Date? {
+        let ts = UserDefaults.standard.double(forKey: lastBackupKey)
+        guard ts > 0 else { return nil }
+        return Date(timeIntervalSince1970: ts)
+    }
+
+    static var isAutoBackupEnabled: Bool {
+        UserDefaults.standard.bool(forKey: autoBackupKey)
+    }
+
+    static func recordBackupNow() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastBackupKey)
+    }
+
+    static func wasBackedUpToday() -> Bool {
+        guard let last = lastBackupDate else { return false }
+        return Calendar.current.isDateInToday(last)
+    }
+
+    static func scheduleNextMidnight() {
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.day! += 1
+        components.hour = 0
+        components.minute = 0
+        components.second = 0
+        guard let nextMidnight = Calendar.current.date(from: components) else { return }
+
+        let request = BGProcessingTaskRequest(identifier: taskID)
+        request.earliestBeginDate = nextMidnight
+        request.requiresNetworkConnectivity = true
+        try? BGTaskScheduler.shared.submit(request)
+    }
+}
+
+// MARK: - Standalone backup payload builder (used by both View and background task)
+func buildBackupPayload(sessions: [WorkoutSession], appState: AppState) -> AppBackupPayload {
+    let setPayloads: [AppBackupSessionPayload] = sessions.map { s in
+        let sets = s.sets
+            .sorted(by: { $0.setNumber < $1.setNumber })
+            .map { set in
+                AppBackupSetPayload(
+                    id: set.id,
+                    setNumber: set.setNumber,
+                    reps: set.reps,
+                    weightKg: set.weightKg,
+                    completedAt: set.completedAt,
+                    supabaseID: set.supabaseID
+                )
+            }
+        return AppBackupSessionPayload(
+            id: s.id,
+            exerciseName: s.exerciseName,
+            muscleGroup: s.muscleGroup,
+            date: s.date,
+            totalSets: s.totalSets,
+            notes: s.notes,
+            sets: sets,
+            supabaseID: s.supabaseID,
+            syncedAt: s.syncedAt,
+            isDirty: s.isDirty
+        )
+    }
+    return AppBackupPayload(
+        exportedAt: .now,
+        appState: appState.makeLocalBackupSnapshot(),
+        workouts: setPayloads
+    )
 }
 
 struct CloudSyncSheet: View {
@@ -51,11 +127,21 @@ struct CloudSyncSheet: View {
     let accent: Color
 
     @AppStorage("google_drive_connected") private var googleDriveConnected: Bool = false
+    @AppStorage("last_backup_date") private var lastBackupTimestamp: Double = 0
+    @AppStorage("auto_backup_enabled") private var autoBackupEnabled: Bool = false
 
     @State private var service = GoogleDriveService()
     @State private var isWorking: Bool = false
     @State private var statusText: String = "尚未開始同步"
     @State private var statusIsError: Bool = false
+
+    private var lastBackupText: String {
+        guard lastBackupTimestamp > 0 else { return "從未備份" }
+        let date = Date(timeIntervalSince1970: lastBackupTimestamp)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy/MM/dd HH:mm"
+        return formatter.string(from: date)
+    }
 
     private func setStatus(_ text: String, error: Bool = false) {
         statusText = text
@@ -63,37 +149,7 @@ struct CloudSyncSheet: View {
     }
 
     private func makeBackupPayload() -> AppBackupPayload {
-        let sessions: [AppBackupSessionPayload] = workoutSessions.map { s in
-            let sets = s.sets
-                .sorted(by: { $0.setNumber < $1.setNumber })
-                .map { set in
-                    AppBackupSetPayload(
-                        id: set.id,
-                        setNumber: set.setNumber,
-                        reps: set.reps,
-                        weightKg: set.weightKg,
-                        completedAt: set.completedAt,
-                        supabaseID: set.supabaseID
-                    )
-                }
-            return AppBackupSessionPayload(
-                id: s.id,
-                exerciseName: s.exerciseName,
-                muscleGroup: s.muscleGroup,
-                date: s.date,
-                totalSets: s.totalSets,
-                notes: s.notes,
-                sets: sets,
-                supabaseID: s.supabaseID,
-                syncedAt: s.syncedAt,
-                isDirty: s.isDirty
-            )
-        }
-        return AppBackupPayload(
-            exportedAt: .now,
-            appState: state.makeLocalBackupSnapshot(),
-            workouts: sessions
-        )
+        buildBackupPayload(sessions: Array(workoutSessions), appState: state)
     }
 
     private func merge(from payload: AppBackupPayload) throws {
@@ -280,6 +336,8 @@ struct CloudSyncSheet: View {
                 fileName: fileName,
                 jsonData: data
             )
+            lastBackupTimestamp = Date().timeIntervalSince1970
+            BackupScheduler.scheduleNextMidnight()
             setStatus("上傳成功，Drive 檔案 ID：\(fileID)")
         } catch {
             setStatus("上傳失敗：\(error.localizedDescription)", error: true)
@@ -318,6 +376,14 @@ struct CloudSyncSheet: View {
         } catch {
             setStatus("下載/匯入失敗：\(error.localizedDescription)", error: true)
         }
+    }
+
+    private func disconnectGoogleDrive() {
+        #if canImport(GoogleSignIn)
+        GIDSignIn.sharedInstance.signOut()
+        #endif
+        googleDriveConnected = false
+        setStatus("已中斷 Google 連線")
     }
 
     private func refreshGoogleSignInStateOnAppear() async {
@@ -382,6 +448,28 @@ struct CloudSyncSheet: View {
                             .buttonStyle(.plain)
                             .disabled(isWorking || googleDriveConnected)
                             .opacity((isWorking || googleDriveConnected) ? 0.78 : 1)
+
+                            if googleDriveConnected {
+                                Button {
+                                    disconnectGoogleDrive()
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "person.crop.circle.badge.minus")
+                                            .font(.subheadline)
+                                        Text("中斷 Google 連線")
+                                            .font(.subheadline)
+                                        Spacer()
+                                    }
+                                    .foregroundStyle(.white.opacity(0.75))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.white.opacity(0.08))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(isWorking)
+                            }
                         }
                         .padding(14)
                         .background(Color.white.opacity(0.10))
@@ -389,6 +477,51 @@ struct CloudSyncSheet: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+
+                        // 上次備份時間 + 自動備份設定
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Image(systemName: "clock.fill")
+                                    .foregroundStyle(.white.opacity(0.7))
+                                    .font(.caption)
+                                Text("上次備份")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.7))
+                                Spacer()
+                                Text(lastBackupText)
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.white)
+                            }
+
+                            Divider().background(Color.white.opacity(0.15))
+
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("每日自動備份")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.white)
+                                    Text("每天凌晨 00:00 自動備份一次")
+                                        .font(.caption2)
+                                        .foregroundStyle(.white.opacity(0.65))
+                                }
+                                Spacer()
+                                Toggle("", isOn: $autoBackupEnabled)
+                                    .labelsHidden()
+                                    .tint(accent)
+                                    .onChange(of: autoBackupEnabled) { _, enabled in
+                                        if enabled {
+                                            BackupScheduler.scheduleNextMidnight()
+                                        }
+                                    }
+                            }
+                        }
+                        .padding(14)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.white.opacity(0.10), lineWidth: 1)
                         )
 
                         VStack(spacing: 10) {
@@ -476,7 +609,7 @@ struct CloudSyncSheet: View {
     }
 }
 
-private final class GoogleDriveService {
+final class GoogleDriveService {
     private let setRestFolderIDKey = "google_drive_setrest_folder_id"
     private let legacyPotlyFolderIDKey = "google_drive_potly_folder_id"
 
